@@ -1,6 +1,8 @@
-#include <windows.h>
 #include <wchar.h>
+#include <windows.h>
 #include <stdlib.h>
+#include <locale.h>
+#include <stdio.h>
 #include <gmodule.h>
 
 #include "hexchat-plugin.h"
@@ -32,6 +34,7 @@ static int y_cb(char* word[], char* word_eol[], void* userdata)
 	char* msg = _G_LOCALE_TO_UTF8("Ë¹¹þË¹¹þ");
 	hexchat_commandf(ph, "MSG %ls %s", sender, msg);
 	free(sender);
+	free(msg);
 
 end:
 	return HEXCHAT_EAT_NONE;
