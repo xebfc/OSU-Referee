@@ -1,9 +1,13 @@
 # OSU-Referee
 
+PRIVMSG
+
+!y: 回复 “斯哈斯哈”
 
 ## Building
 
 HexChat Plugin Interface: https://hexchat.readthedocs.io/en/latest/plugins.html#plugins-on-windows-win32
+
 HexChat Building: https://hexchat.readthedocs.io/en/latest/building.html
 
 注意事项：
