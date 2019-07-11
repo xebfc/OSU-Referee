@@ -17,7 +17,7 @@ wchar_t* from_utf8(char* str)
 
 #else
 
-	char* fn = _G_FILENAME_FROM_UTF8(str);
+	char* fn = _G_LOCALE_FROM_UTF8(str);
 
 #endif
 

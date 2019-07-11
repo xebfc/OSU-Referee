@@ -1,9 +1,12 @@
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 #include "strb.h"
 
-typedef void (*save_t)(strb_t* dest, const char* src, size_t n, size_t old_size);
+typedef void (*save_t)(strb_t* dest, const char* src, size_t n, size_t old_size, size_t new_size);
 
 strb_t* strb_new(const char* str)
 {
@@ -47,17 +50,36 @@ void strb_free(strb_t* buffer)
 	free(buffer);
 }
 
-static void _after(strb_t* dest, const char* src, size_t n, size_t old_size)
+static void _after(strb_t* dest, const char* src, size_t n, size_t old_size, size_t new_size)
 {
 	memmove(dest->str + n, dest->str, STR_SIZEOF(n));
 	memcpy(dest->str, src, STR_SIZEOF(n));
-	*(dest->str + (old_size - 1) + n) = '\0';
+	*(dest->str + new_size - 1) = '\0';
 }
 
-static void _before(strb_t* dest, const char* src, size_t n, size_t old_size)
+static void _before(strb_t* dest, const char* src, size_t n, size_t old_size, size_t new_size)
 {
 	memcpy(dest->str + (old_size - 1), src, STR_SIZEOF(n));
-	*(dest->str + (old_size - 1) + n) = '\0';
+	*(dest->str + new_size - 1) = '\0';
+}
+
+static int _resize(strb_t* buffer, size_t new_size)
+{
+	if (buffer == NULL)
+		goto err;
+
+	char* ptr = (char*)realloc(buffer->str, STR_SIZEOF(new_size));
+
+	if (ptr == NULL)
+		goto err;
+
+	buffer->str = ptr;
+	buffer->length = new_size;
+
+	return 0;
+
+err:
+	return 1;
 }
 
 static strb_err_code _cat(strb_t* dest, const char* src, size_t n, save_t fun)
@@ -69,21 +91,16 @@ static strb_err_code _cat(strb_t* dest, const char* src, size_t n, save_t fun)
 		return STRB_LEN_ERR;
 
 	if (dest == NULL)
-	{
 		dest = strb_new(NULL);
-		if (dest == NULL)
-			return STRB_NEW_FAILED;
-	}
 
-	int old_size, new_size = dest->length + n;
-	char* ptr = (char*)realloc(dest->str, STR_SIZEOF(new_size));
-	if (ptr == NULL)
+	int old_size = dest->length,
+		new_size = old_size + n;
+
+	if (_resize(dest, new_size))
 		return STRB_RESIZE_FAILED;
-	dest->str = ptr;
 
-	old_size = dest->length;
-	dest->length = new_size;
-	fun(dest, src, n, old_size);
+	fun(dest, src, n, old_size, new_size);
+
 	return STRB_NO_ERR;
 }
 
@@ -135,8 +152,108 @@ int strb_strlen(strb_t* buffer)
 	return strlen(buffer->str);
 }
 
-int strb_index_of(strb_t* buffer, int c)
+int strb_index_of_char(strb_t* buffer, int c)
 {
-	char* ptr = strchr(buffer->str, c);
-	return ptr - buffer->str;
+	if (buffer == NULL)
+		return -1;
+
+	return index_of_char(buffer->str, c);
+}
+
+int strb_index_of_str(strb_t* buffer, const char* str)
+{
+	if (buffer == NULL)
+		return -1;
+
+	return index_of_str(buffer->str, str);
+}
+
+int strb_index_of_strb(strb_t* b1, strb_t* b2)
+{
+	if (b1 == NULL || b2 == NULL)
+		return -1;
+
+	return index_of_str(b1->str, b2->str);
+}
+
+int strb_last_index_of_char(strb_t* buffer, int c)
+{
+	if (buffer == NULL)
+		return -1;
+
+	return last_index_of_char(buffer->str, c);
+}
+
+strb_err_code strb_sprintf(strb_t* buffer, const char* format, ...)
+{
+	va_list args;
+	va_start(args, format);
+
+	strb_err_code err_code = strb_vsprintf(buffer, format, args);
+
+	va_end(args);
+	return err_code;
+}
+
+strb_err_code strb_append_sprintf(strb_t* buffer, const char* format, ...)
+{
+	va_list args;
+	va_start(args, format);
+
+	strb_err_code err_code = strb_append_vsprintf(buffer, format, args);
+
+	va_end(args);
+	return err_code;
+}
+
+strb_err_code strb_vsprintf(strb_t* buffer, const char* format, va_list args)
+{
+	if (buffer == NULL)
+		buffer = strb_new(NULL);
+
+	int len = vsnprintf(NULL, 0, format, args),
+		new_size = len + 1;
+
+	if (_resize(buffer, new_size))
+		return STRB_RESIZE_FAILED;
+
+	vsnprintf(buffer->str, new_size, format, args);
+
+	return STRB_NO_ERR;
+}
+
+strb_err_code strb_append_vsprintf(strb_t* buffer, const char* format, va_list args)
+{
+	if (buffer == NULL)
+		buffer = strb_new(NULL);
+
+	int len = vsnprintf(NULL, 0, format, args),
+		old_size = buffer->length;
+
+	if (_resize(buffer, old_size + len))
+		return STRB_RESIZE_FAILED;
+
+	vsnprintf(buffer->str + old_size - 1, len + 1, format, args);
+
+	return STRB_NO_ERR;
+}
+
+//-------------------------------------------------------------------------------
+
+int index_of_char(const char* str, int c)
+{
+	char* ptr = strchr(str, c);
+	return ptr == NULL ? -1 : ptr - str;
+}
+
+int index_of_str(const char* str1, const char* str2)
+{
+	char* ptr = strstr(str1, str2);
+	return ptr == NULL ? -1 : ptr - str1;
+}
+
+int last_index_of_char(const char* str, int c)
+{
+	char* ptr = strrchr(str, c);
+	return ptr == NULL ? -1 : ptr - str;
 }
