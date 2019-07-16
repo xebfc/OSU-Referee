@@ -12,7 +12,7 @@ wchar_t* from_utf8(char* str)
 
 #ifdef _WIN32
 
-	len = _MULTI_BYTE_TO_WIDE_CHAR(CP_UTF8, str, NULL, 0);
+	len = _MULTI_BYTE_TO_WIDE_CHAR(CP_UTF8, str, NULL, 0); // 已经包含字符结尾符'\0'
 	wcs = WCS_MALLOC(len);
 	_MULTI_BYTE_TO_WIDE_CHAR(CP_UTF8, str, wcs, len);
 
