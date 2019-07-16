@@ -25,10 +25,8 @@ static int y_cb(char* word[], char* word_eol[], void* userdata)
 	free(w);
 
 	w = from_utf8(word[1]);
-	int index = wcschr(w, L'!') - w;
-	wchar_t* sender = (wchar_t*)malloc(WCS_SIZEOF(index));
-	memcpy(sender, w + 1, WCS_SIZEOF(index - 1));
-	*(sender + index - 1) = L'\0';
+	int index = index_of_wc(w, L'!');
+	wchar_t* sender = subws(w, 1, index);
 	free(w);
 
 	utf8_commandf("MSG %ls Ë¹¹þË¹¹þ", sender);
