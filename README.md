@@ -1,12 +1,12 @@
 # OSU-Referee
 
-PRIVMSG
-
-!y: 回复 “斯哈斯哈”
-
-HEXCHAT COMMAND
+#### HEXCHAT COMMAND
 
 /BB: Usage: BB <message> 给BanchoBot发送消息
+  
+#### PRIVMSG
+
+!y: 回复 “斯哈斯哈”
 
 ## Building
 
