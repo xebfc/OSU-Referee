@@ -4,6 +4,10 @@ PRIVMSG
 
 !y: 回复 “斯哈斯哈”
 
+HEXCHAT COMMAND
+
+/BB: Usage: BB <message> 给BanchoBot发送消息
+
 ## Building
 
 HexChat Plugin Interface: https://hexchat.readthedocs.io/en/latest/plugins.html#plugins-on-windows-win32
