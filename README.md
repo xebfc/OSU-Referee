@@ -2,7 +2,7 @@
 
 #### HEXCHAT COMMAND
 
-/BB: Usage: BB <message> 给BanchoBot发送消息
+/BB: Usage: BB \<message> 给BanchoBot发送消息
   
 #### PRIVMSG
 
