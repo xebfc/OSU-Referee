@@ -3,6 +3,7 @@
 #### HEXCHAT COMMAND
 
 /BB: Usage: BB \<message> 给BanchoBot发送消息
+/INI: Usage: INI <key> [value] 查看或修改referee.ini配置
   
 #### PRIVMSG
 
