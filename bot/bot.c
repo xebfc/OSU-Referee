@@ -1,6 +1,7 @@
 #include <wchar.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdio.h>
 
 #include "hexchat-plugin.h"
 
@@ -11,8 +12,10 @@
 #define PDESC "Simple Edition Automated Referee"
 #define PVERSION "0.1"
 
-static void utf8_commandf(const char* format, ...);
 static void utf8_command(const char* cmd);
+static void utf8_commandf(const char* format, ...);
+static void utf8_print(const char* text);
+static void utf8_printf(const char* format, ...);
 
 static hexchat_plugin* ph;      /* plugin handle */
 static int enable = 1;
@@ -38,19 +41,75 @@ end:
 }
 
 static int
-bb_cb(char* word[], char* word_eol[], void* userdata)
-{
-	utf8_commandf("MSG BanchoBot %s", word_eol[2]);
-	return HEXCHAT_EAT_ALL;
-}
-
-static int
 bancho_cb(char* word[], char* word_eol[], void* userdata)
 {
 	return HEXCHAT_EAT_NONE;
 }
 
+// hook command
 //-------------------------------------------------------------------------------
+
+static int
+bb_cb(char* word[], char* word_eol[], void* userdata)
+{
+	if (strlen(word_eol[2]) == 0)
+	{
+		utf8_command("HELP BB");
+		goto end;
+	}
+
+	utf8_commandf("MSG BanchoBot %s", word_eol[2]);
+
+end:
+	return HEXCHAT_EAT_ALL;
+}
+
+static int
+ini_cb(char* word[], char* word_eol[], void* userdata)
+{
+	if (strlen(word[2]) == 0)
+	{
+		utf8_command("HELP INI");
+		goto end;
+	}
+
+	char* old_value[0xff];
+	int success = hexchat_pluginpref_get_str(ph, word[2], old_value);
+
+	if (strlen(word[3]) > 0)
+	{
+		if (hexchat_pluginpref_set_str(ph, word[2], word[3]) == 0)
+		{
+			utf8_printf("属性 %s 设置失败");
+			goto end;
+		}
+
+		if (success)
+			utf8_printf("属性 %s 修改成功，其原值为：%s", word[2], old_value);
+		else
+			utf8_printf("新增 %s 属性", word[2]);
+	}
+	else
+	{
+		if (success)
+			utf8_printf("属性 %s 值为：%s", word[2], old_value);
+		else
+			utf8_printf("属性 %s 尚未设置", word[2]);
+	}
+
+end:
+	return HEXCHAT_EAT_ALL;
+}
+
+//-------------------------------------------------------------------------------
+
+static void
+utf8_command(const char* cmd)
+{
+	char* cmd_utf8 = _G_LOCALE_TO_UTF8(cmd);
+	hexchat_command(ph, cmd_utf8);
+	free(cmd_utf8);
+}
 
 static void
 utf8_commandf(const char* format, ...)
@@ -68,11 +127,26 @@ utf8_commandf(const char* format, ...)
 }
 
 static void
-utf8_command(const char* cmd)
+utf8_print(const char* text)
 {
-	char* cmd_utf8 = _G_LOCALE_TO_UTF8(cmd);
-	hexchat_command(ph, cmd_utf8);
-	free(cmd_utf8);
+	char* text_utf8 = _G_LOCALE_TO_UTF8(text);
+	hexchat_print(ph, text_utf8);
+	free(text_utf8);
+}
+
+static void
+utf8_printf(const char* format, ...)
+{
+	va_list args;
+	va_start(args, format);
+
+	strb_t* text = strb_new(NULL);
+	strb_vsprintf(text, format, args);
+
+	utf8_print(text->str);
+
+	strb_free(text);
+	va_end(args);
 }
 
 static hexchat_hook*
@@ -103,9 +177,14 @@ hexchat_plugin_init(hexchat_plugin* plugin_handle,
 	*plugin_desc = PDESC;
 	*plugin_version = PVERSION;
 
-	hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, y_cb, NULL);
+	// config
 
+	// hook command
 	utf8_hook_command("BB", HEXCHAT_PRI_NORM, bb_cb, "Usage: BB <message> 给BanchoBot发送消息", NULL);
+	utf8_hook_command("INI", HEXCHAT_PRI_NORM, ini_cb, "Usage: INI <key> [value] 查看或修改referee.ini配置", NULL);
+
+	// hook server
+	hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, y_cb, NULL);
 	hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, bancho_cb, NULL);
 
 	hexchat_printf(ph, "%s loaded successfully!\n", PNAME);
