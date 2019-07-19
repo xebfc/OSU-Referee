@@ -2,11 +2,12 @@
 
 #### HEXCHAT COMMAND
 
-/BB: Usage: BB <message> 给BanchoBot发送消息
+/BB: Usage: BB \<message> 给BanchoBot发送消息<br/>
+/INI: Usage: INI <key> [value] 查看或修改referee.ini配置<br/>
   
 #### PRIVMSG
 
-!y: 回复 “斯哈斯哈”
+!y: 回复 “斯哈斯哈”<br/>
 
 ## Building
 
