@@ -4,20 +4,20 @@
 #include <stddef.h>
 #include <stdarg.h>
 
-#define STR_SIZEOF(len) (sizeof(char)*(len))
+#define STR_SIZEOF(len) ((len) * sizeof(char))
 
 typedef enum
 {
-	STRB_NO_ERR,
-	STRB_NULL_ERR,
-	STRB_LEN_ERR,
-	STRB_RESIZE_FAILED,
+    STRB_NO_ERR,
+    STRB_NULL_ERR,
+    STRB_LEN_ERR,
+    STRB_RESIZE_FAILED,
 } strb_err_code;
 
 typedef struct
 {
-	char* str;
-	size_t length;
+    char* str;
+    size_t length;
 } strb_t;
 
 strb_t* strb_new(const char* str);
@@ -55,5 +55,7 @@ int index_of_char(const char* str, int c);
 int index_of_str(const char* str1, const char* str2);
 
 int last_index_of_char(const char* str, int c);
+
+char* substr(const char* str, int beginIndex, int endIndex);
 
 #endif
