@@ -16,10 +16,10 @@
 )
 
 // Times33
-static size_t DJBHash(const char* str, size_t length)
+unsigned int DJBHash(const char* str, unsigned int length)
 {
-    size_t hash = 5381;
-    size_t i = 0;
+    unsigned int hash = 5381;
+    unsigned int i = 0;
 
     for (i = 0; i < length; ++str, ++i)
     {
@@ -30,7 +30,7 @@ static size_t DJBHash(const char* str, size_t length)
 }
 
 // JDK1.8
-static size_t JDKHash(char* key)
+size_t JDKHash(char* key)
 {
     size_t h, length = strlen(key);
     return key == NULL ? 0 : (h = DJBHash(key, length)) ^ (h >> HALF_INT_BIT);
@@ -136,6 +136,7 @@ void* hashmap_remove(hashmap_t* map, char* key)
             else
                 prev->next = e->next;
 
+            e->next = NULL;
             free(e->key);
             e->key = NULL;
             void* value = e->value;
@@ -154,5 +155,5 @@ end:
 
 bool hashmap_exists(hashmap_t* map, char* key)
 {
-    return _get_entry(map, key) != NULL;
+    return _get_entry(map, key) != NULL ? true : false;
 }
