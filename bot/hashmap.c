@@ -85,7 +85,32 @@ err:
 
 void hashmap_clear(hashmap_t* map)
 {
+    if (map == NULL)
+        return;
 
+    size_t i = map->length;
+    while (i > 0)
+    {
+        entry_t e = *(map->list + --i);
+        if (e == NULL)
+            continue;
+        *(map->list + i) = NULL;
+
+        entry_t prev;
+        while (e != NULL)
+        {
+            free(e->key);
+            e->key = NULL;
+            free(e->value);
+            e->value = NULL;
+
+            prev = e;
+            e = e->next;
+            prev->next = NULL;
+            free(prev);
+        }
+    }
+    map->size = 0;
 }
 
 void hashmap_free(hashmap_t* map)
