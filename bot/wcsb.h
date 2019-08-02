@@ -18,10 +18,10 @@
 
 wchar_t* from_utf8(char* str);
 
-int index_of_wc(const wchar_t* ws, wchar_t wc);
-int index_of_ws(const wchar_t* ws1, const wchar_t* ws2);
+int indexof_wc(const wchar_t* ws, wchar_t wc);
+int indexof_ws(const wchar_t* ws1, const wchar_t* ws2);
 
-int last_index_of_wc(const wchar_t* ws, wchar_t wc);
+int last_indexof_wc(const wchar_t* ws, wchar_t wc);
 
 wchar_t* subws(const wchar_t* ws, int beginIndex, int endIndex);
 

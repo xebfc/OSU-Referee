@@ -5,44 +5,46 @@
 #include <glib.h>
 
 #include "hexchat-plugin.h"
-
 #include "strb.h"
 #include "wcsb.h"
+#include "promise.h"
 
 #define PNAME "OSU!Referee"
 #define PDESC "Simple Edition Automated Referee"
 #define PVERSION "0.1"
+
+static hexchat_plugin* ph;      /* plugin handle */
+static int enable = 1;
+
+//-------------------------------------------------------------------------------
 
 #define CHAR_MAX 0xff
 #define PVER_KEY "_pVersion"
 
 #define ARR_LEN(a) (sizeof(a) / sizeof(*a))
 #define GET_UNAME(prefix) ( \
-    substr(prefix, 1, index_of_char(prefix, '!')) \
+    substr(prefix, 1, indexof_char(prefix, '!')) \
 )
-#define CK_HOST(uname, block) { \
-    if (hexchat_nickcmp(ph, uname, cfg.host2) != 0 && hexchat_nickcmp(ph, uname, cfg.bot) != 0) \
+#define CK_HOST(uname, callback_block) { \
+    if (hexchat_nickcmp(ph, uname, cfg.staff2) != 0 && hexchat_nickcmp(ph, uname, cfg.bot) != 0) \
     { \
-        utf8_print("您的用户权限不足"); \
-        block \
+        utf8_print("非STAFF用户，禁止使用"); \
+        callback_block \
     } \
 }
 
-static hexchat_plugin* ph;      /* plugin handle */
-static int enable = 1;
-
 typedef struct
 {
-    char host[CHAR_MAX];        // 为 NULL 时表示bot用户
+    char staff[CHAR_MAX];        // 为 NULL 时表示bot用户
     char set[CHAR_MAX];
     char password[CHAR_MAX];
     char sleep[CHAR_MAX];
 
     char bot[CHAR_MAX];         // 用于存放bot用户
-    char* host2;                // 当前实际host
+    char* staff2;               // 当前实际host
 } referee_ini_t;
 
-static char* attrs[] = { "host","set","password","sleep" };
+static char* attrs[] = { "staff","set","password","sleep" };
 static char* attrs_default_value[] = { "","2 0 16","998","300" };
 static referee_ini_t cfg;
 
@@ -70,7 +72,7 @@ static void reload_cfg()
     int len = ARR_LEN(attrs);
     while (len--)
     {
-        char* attr = &cfg.host + len;
+        char* attr = &cfg.staff + len;
         hexchat_pluginpref_get_str(ph, attrs[len], attr);
 
         // 剔除脏值
@@ -78,10 +80,10 @@ static void reload_cfg()
         memset(attr + size, '\0', CHAR_MAX - size);
     }
 
-    if (strlen(cfg.host) > 0)
-        cfg.host2 = &cfg.host;
+    if (strlen(cfg.staff) > 0)
+        cfg.staff2 = &cfg.staff;
     else
-        cfg.host2 = &cfg.bot;
+        cfg.staff2 = &cfg.bot;
 }
 
 // hook command
@@ -141,6 +143,13 @@ end:
     return HEXCHAT_EAT_ALL;
 }
 
+static int
+make_cmd_cb(char* word[], char* word_eol[], void* userdata)
+{
+    utf8_commandf("MSG %s !make %s", cfg.bot, word_eol[2]);
+    return HEXCHAT_EAT_ALL;
+}
+
 // hook server
 //-------------------------------------------------------------------------------
 
@@ -153,7 +162,7 @@ y_cb(char* word[], char* word_eol[], void* userdata)
     free(w);
 
     w = from_utf8(word[1]);
-    int index = index_of_wc(w, L'!');
+    int index = indexof_wc(w, L'!');
     wchar_t* sender = subws(w, 1, index);
     free(w);
 
@@ -171,13 +180,9 @@ make_cb(char* word[], char* word_eol[], void* userdata)
         goto end;
 
     char* uname = GET_UNAME(word[1]);
-    CK_HOST(uname, { goto clean; });
+    CK_HOST(uname, { free(uname); });
 
     utf8_commandf("BB !mp make %s", word_eol[5]);
-    utf8_commandf("BB !mp addref %s", uname);
-
-clean:
-    free(uname);
 
 end:
     return HEXCHAT_EAT_NONE;
@@ -186,16 +191,22 @@ end:
 static int
 forward_cb(char* word[], char* word_eol[], void* userdata)
 {
-    if (cfg.host == NULL)
+    if (strlen(cfg.staff) == 0)
         goto end;
 
     char* uname = GET_UNAME(word[1]);
+    // 确保是bancho发送的信息 && 屏蔽mp房间内私聊消息
     if (strcmp(uname, "BanchoBot") == 0 && hexchat_nickcmp(ph, word[3], cfg.bot) == 0)
-        utf8_commandf("MSG %s %s", cfg.host2, word_eol[4] + 1);
+        utf8_commandf("MSG %s %s", cfg.staff2, word_eol[4] + 1);
     free(uname);
 
 end:
     return HEXCHAT_EAT_NONE;
+}
+
+static int
+join_cb()
+{
 }
 
 //-------------------------------------------------------------------------------
@@ -285,6 +296,7 @@ hexchat_plugin_init(hexchat_plugin* plugin_handle,
     // hook command
     utf8_hook_command("BB", HEXCHAT_PRI_NORM, bb_cb, "Usage: BB <message> 给BanchoBot发送消息", NULL);
     utf8_hook_command("INI", HEXCHAT_PRI_NORM, ini_cb, "Usage: INI <key> [value] 查看或修改referee.ini配置", NULL);
+    utf8_hook_command("MAKE", HEXCHAT_PRI_NORM, make_cmd_cb, "See: !make", NULL);
 
     // hook server
     hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, y_cb, NULL);

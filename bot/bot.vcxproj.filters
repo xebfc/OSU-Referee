@@ -24,6 +24,12 @@
     <ClCompile Include="wcsb.c">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="promise.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="hashmap.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="bot.def">
@@ -35,6 +41,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="wcsb.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="promise.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="hashmap.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

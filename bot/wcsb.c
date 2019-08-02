@@ -34,19 +34,19 @@ wchar_t* from_utf8(char* str)
     return wcs;
 }
 
-int index_of_wc(const wchar_t* ws, wchar_t wc)
+int indexof_wc(const wchar_t* ws, wchar_t wc)
 {
     wchar_t* ptr = wcschr(ws, wc);
     return ptr == NULL ? -1 : ptr - ws;
 }
 
-int index_of_ws(const wchar_t* ws1, const wchar_t* ws2)
+int indexof_ws(const wchar_t* ws1, const wchar_t* ws2)
 {
     wchar_t* ptr = wcsstr(ws1, ws2);
     return ptr == NULL ? -1 : ptr - ws1;
 }
 
-int last_index_of_wc(const wchar_t* ws, wchar_t wc)
+int last_indexof_wc(const wchar_t* ws, wchar_t wc)
 {
     wchar_t* ptr = wcsrchr(ws, wc);
     return ptr == NULL ? -1 : ptr - ws;

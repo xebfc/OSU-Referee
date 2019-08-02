@@ -12,6 +12,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="bot.c" />
+    <ClCompile Include="hashmap.c" />
+    <ClCompile Include="promise.c" />
     <ClCompile Include="strb.c" />
     <ClCompile Include="wcsb.c" />
   </ItemGroup>
@@ -19,6 +21,8 @@
     <None Include="bot.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="hashmap.h" />
+    <ClInclude Include="promise.h" />
     <ClInclude Include="strb.h" />
     <ClInclude Include="wcsb.h" />
   </ItemGroup>

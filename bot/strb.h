@@ -12,6 +12,7 @@ typedef enum
     STRB_NULL_ERR,
     STRB_LEN_ERR,
     STRB_RESIZE_FAILED,
+    STRB_NEW_FAILED,
 } strb_err_code;
 
 typedef struct
@@ -37,11 +38,11 @@ strb_err_code strb_prencat_buffer(strb_t* dest, strb_t* src, size_t n);
 
 int strb_strlen(strb_t* buffer);
 
-int strb_index_of_char(strb_t* buffer, int c);
-int strb_index_of_str(strb_t* buffer, const char* str);
-int strb_index_of_strb(strb_t* b1, strb_t* b2);
+int strb_indexof_char(strb_t* buffer, int c);
+int strb_indexof_str(strb_t* buffer, const char* str);
+int strb_indexof_strb(strb_t* b1, strb_t* b2);
 
-int strb_last_index_of_char(strb_t* buffer, int c);
+int strb_last_indexof_char(strb_t* buffer, int c);
 
 strb_err_code strb_sprintf(strb_t* buffer, const char* format, ...);
 strb_err_code strb_append_sprintf(strb_t* buffer, const char* format, ...);
@@ -51,10 +52,10 @@ strb_err_code strb_append_vsprintf(strb_t* buffer, const char* format, va_list a
 
 //-------------------------------------------------------------------------------
 
-int index_of_char(const char* str, int c);
-int index_of_str(const char* str1, const char* str2);
+int indexof_char(const char* str, int c);
+int indexof_str(const char* str1, const char* str2);
 
-int last_index_of_char(const char* str, int c);
+int last_indexof_char(const char* str, int c);
 
 char* substr(const char* str, int beginIndex, int endIndex);
 

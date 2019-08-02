@@ -95,7 +95,8 @@ static strb_err_code _cat(strb_t* dest, const char* src, size_t n, save_t fun)
         return STRB_LEN_ERR;
 
     if (dest == NULL)
-        dest = strb_new(NULL);
+        //dest = strb_new(NULL);
+        return STRB_NEW_FAILED;
 
     int old_size = dest->length,
         new_size = old_size + n;
@@ -156,36 +157,36 @@ int strb_strlen(strb_t* buffer)
     return strlen(buffer->str);
 }
 
-int strb_index_of_char(strb_t* buffer, int c)
+int strb_indexof_char(strb_t* buffer, int c)
 {
     if (buffer == NULL)
         return -1;
 
-    return index_of_char(buffer->str, c);
+    return indexof_char(buffer->str, c);
 }
 
-int strb_index_of_str(strb_t* buffer, const char* str)
+int strb_indexof_str(strb_t* buffer, const char* str)
 {
     if (buffer == NULL)
         return -1;
 
-    return index_of_str(buffer->str, str);
+    return indexof_str(buffer->str, str);
 }
 
-int strb_index_of_strb(strb_t* b1, strb_t* b2)
+int strb_indexof_strb(strb_t* b1, strb_t* b2)
 {
     if (b1 == NULL || b2 == NULL)
         return -1;
 
-    return index_of_str(b1->str, b2->str);
+    return indexof_str(b1->str, b2->str);
 }
 
-int strb_last_index_of_char(strb_t* buffer, int c)
+int strb_last_indexof_char(strb_t* buffer, int c)
 {
     if (buffer == NULL)
         return -1;
 
-    return last_index_of_char(buffer->str, c);
+    return last_indexof_char(buffer->str, c);
 }
 
 strb_err_code strb_sprintf(strb_t* buffer, const char* format, ...)
@@ -213,7 +214,8 @@ strb_err_code strb_append_sprintf(strb_t* buffer, const char* format, ...)
 strb_err_code strb_vsprintf(strb_t* buffer, const char* format, va_list args)
 {
     if (buffer == NULL)
-        buffer = strb_new(NULL);
+        //buffer = strb_new(NULL);
+        return STRB_NEW_FAILED;
 
     int len = vsnprintf(NULL, 0, format, args),
         new_size = len + 1;
@@ -229,7 +231,8 @@ strb_err_code strb_vsprintf(strb_t* buffer, const char* format, va_list args)
 strb_err_code strb_append_vsprintf(strb_t* buffer, const char* format, va_list args)
 {
     if (buffer == NULL)
-        buffer = strb_new(NULL);
+        //buffer = strb_new(NULL);
+        return STRB_NEW_FAILED;
 
     int len = vsnprintf(NULL, 0, format, args),
         old_size = buffer->length;
@@ -244,19 +247,19 @@ strb_err_code strb_append_vsprintf(strb_t* buffer, const char* format, va_list a
 
 //-------------------------------------------------------------------------------
 
-int index_of_char(const char* str, int c)
+int indexof_char(const char* str, int c)
 {
     char* ptr = strchr(str, c);
     return ptr == NULL ? -1 : ptr - str;
 }
 
-int index_of_str(const char* str1, const char* str2)
+int indexof_str(const char* str1, const char* str2)
 {
     char* ptr = strstr(str1, str2);
     return ptr == NULL ? -1 : ptr - str1;
 }
 
-int last_index_of_char(const char* str, int c)
+int last_indexof_char(const char* str, int c)
 {
     char* ptr = strrchr(str, c);
     return ptr == NULL ? -1 : ptr - str;
