@@ -30,7 +30,7 @@ unsigned int DJBHash(const char* str, unsigned int length)
 }
 
 // JDK1.8
-size_t JDKHash(char* key)
+static size_t JDKHash(char* key)
 {
     size_t h, length = strlen(key);
     return key == NULL ? 0 : (h = DJBHash(key, length)) ^ (h >> HALF_INT_BIT);
@@ -106,7 +106,10 @@ void hashmap_free(hashmap_t* map)
 void* hashmap_put(hashmap_t* map, char* key, void* value)
 {
     if (map == NULL)
-        map = hashmap_new();
+        goto end;
+
+end:
+    return NULL;
 }
 
 void* hashmap_get(hashmap_t* map, char* key)

@@ -22,7 +22,6 @@ typedef struct
 } hashmap_t;
 
 unsigned int DJBHash(const char* str, unsigned int length);
-size_t JDKHash(char* key);
 
 hashmap_t* hashmap_new();
 void hashmap_clear(hashmap_t* map);
