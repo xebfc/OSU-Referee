@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "hashmap.h"
+#include "strb.h"
 
 #define DEFAULT_INITIAL_CAPACITY 1 << 4 // 默认初始容量，2的4次方 = 16
 #define MAXIMUM_CAPACITY 1 << 30 // 最大容量，2的30次方
@@ -14,6 +15,10 @@
 #define ENTRY_LIST_MALLOC(len) ( \
     (entry_t*)malloc((len) * sizeof(entry_t)) \
 )
+#define FREE_VAL(func, data) { \
+    if (func != NULL) \
+        func(data); \
+}
 
 // Times33
 unsigned int DJBHash(const char* str, unsigned int length)
@@ -62,11 +67,33 @@ end:
     return NULL;
 }
 
+static void _add_entry(hashmap_t* map, char* key, void* value)
+{
+    if (map == NULL)
+        return;
+
+    size_t hash = JDKHash(key),
+        i = INDEX_FOR(hash, map->length);
+
+    entry_t e = (entry_t)malloc(sizeof(struct entry));
+    if (e == NULL)
+        return;
+
+    e->hash = hash;
+    e->key = (char*)malloc(STR_SIZEOF(strlen(key) + 1));
+    e->value = value;
+
+    *(map->list + i) = &e;
+
+    if (++map->size > map->length)
+        _resize();
+}
+
 //-------------------------------------------------------------------------------
 
-hashmap_t* hashmap_new()
+hashmap_t* hashmap_new(destroy_t val_destroy_func)
 {
-    hashmap_t* map = (hashmap_t*)malloc(sizeof(*map));
+    hashmap_t* map = (hashmap_t*)malloc(sizeof(hashmap_t));
     if (map == NULL)
         goto err;
 
@@ -75,6 +102,7 @@ hashmap_t* hashmap_new()
     if (map->list == NULL)
         goto err;
     map->length = DEFAULT_INITIAL_CAPACITY;
+    map->val_destroy_func = val_destroy_func;
 
     return map;
 
@@ -101,7 +129,7 @@ void hashmap_clear(hashmap_t* map)
         {
             free(e->key);
             e->key = NULL;
-            free(e->value);
+            FREE_VAL(map->val_destroy_func, e->value);
             e->value = NULL;
 
             prev = e;
@@ -133,6 +161,16 @@ void* hashmap_put(hashmap_t* map, char* key, void* value)
     if (map == NULL)
         goto end;
 
+    entry_t e = _get_entry(map, key);
+    if (e != NULL)
+    {
+        void* old = e->value;
+        e->value = value;
+        return old;
+    }
+
+    _add_entry(map, key, value);
+
 end:
     return NULL;
 }
@@ -160,17 +198,17 @@ void* hashmap_remove(hashmap_t* map, char* key)
             map->size--;
 
             if (prev == e)
-                * (map->list + i) = e->next;
+                (*(map->list + i) = e->next); // 外层括号用于避免将指针运算符*识别为乘法
             else
                 prev->next = e->next;
 
             e->next = NULL;
             free(e->key);
             e->key = NULL;
-            void* value = e->value;
+            void* old = e->value;
             e->value = NULL;
             free(e);
-            return value;
+            return old;
         }
 
         prev = e;
@@ -183,5 +221,5 @@ end:
 
 bool hashmap_exists(hashmap_t* map, char* key)
 {
-    return _get_entry(map, key) != NULL ? true : false;
+    return _get_entry(map, key) != NULL;
 }

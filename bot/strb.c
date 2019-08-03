@@ -86,7 +86,7 @@ err:
     return 1;
 }
 
-static strb_err_code _cat(strb_t* dest, const char* src, size_t n, save_t fun)
+static strb_err_code _cat(strb_t* dest, const char* src, size_t n, save_t func)
 {
     if (src == NULL)
         return STRB_NULL_ERR;
@@ -104,7 +104,7 @@ static strb_err_code _cat(strb_t* dest, const char* src, size_t n, save_t fun)
     if (_resize(dest, new_size))
         return STRB_RESIZE_FAILED;
 
-    fun(dest, src, n, old_size, new_size);
+    func(dest, src, n, old_size, new_size);
 
     return STRB_NO_ERR;
 }
