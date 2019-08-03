@@ -6,10 +6,6 @@
 
 #include "strb.h"
 
-#define STR_MALLOC(len) ( \
-    (char*)malloc(STR_SIZEOF(len)) \
-)
-
 typedef void (*save_t)(strb_t* dest, const char* src, size_t n, size_t old_size, size_t new_size);
 
 strb_t* strb_new(const char* str)

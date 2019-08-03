@@ -15,10 +15,6 @@
 #define ENTRY_LIST_MALLOC(len) ( \
     (entry_t*)malloc((len) * sizeof(entry_t)) \
 )
-#define FREE_VAL(func, data) { \
-    if (func != NULL) \
-        func(data); \
-}
 
 // Times33
 unsigned int DJBHash(const char* str, unsigned int length)
@@ -41,9 +37,75 @@ static size_t JDKHash(char* key)
     return key == NULL ? 0 : (h = DJBHash(key, length)) ^ (h >> HALF_INT_BIT);
 }
 
-static void _resize()
+static void _resize(hashmap_t* map)
 {
+    // 超过最大值就不再扩容了，随它碰撞去吧
+    if (map->length >= MAXIMUM_CAPACITY)
+        return;
 
+    //size_t old_length = map->length;
+    size_t new_length = map->length << 1; // 没超过最大值，就扩充为原来的2倍
+    entry_t* new_list = ENTRY_LIST_MALLOC(new_length);
+    if (new_list == NULL)
+        return;
+
+    size_t i = map->length;
+    while (i-- > 0)
+    {
+        entry_t e = *(map->list + i);
+        if (e == NULL)
+            continue;
+        *(map->list + i) = NULL;
+
+        if (e->next == NULL)
+        {
+            (*(new_list + INDEX_FOR(e->hash, new_length)) = e);
+            continue;
+        }
+
+        entry_t n,
+            loHead = NULL, loTail = NULL,
+            hiHead = NULL, hiTail = NULL;
+        do
+        {
+            n = e->next;
+
+            // 原索引
+            if ((e->hash & map->length) == 0)
+            {
+                if (loTail == NULL)
+                    loHead = e;
+                else
+                    loTail->next = e;
+                loTail = e;
+            }
+            // 原索引 + old_length
+            else
+            {
+                if (hiTail == NULL)
+                    hiHead = e;
+                else
+                    hiTail->next = e;
+                hiTail = e;
+            }
+        } while ((e = n) != NULL);
+
+        if (loTail != NULL)
+        {
+            loTail->next = NULL;
+            *(new_list + i) = loHead;
+        }
+
+        if (hiTail != NULL)
+        {
+            hiTail->next = NULL;
+            *(new_list + i + map->length) = hiHead;
+        }
+    }
+
+    map->length = new_length;
+    free(map->list);
+    map->list = new_list;
 }
 
 static entry_t _get_entry(hashmap_t* map, char* key)
@@ -80,13 +142,21 @@ static void _add_entry(hashmap_t* map, char* key, void* value)
         return;
 
     e->hash = hash;
-    e->key = (char*)malloc(STR_SIZEOF(strlen(key) + 1));
+    e->key = STR_MALLOC(strlen(key) + 1);
+    if (e->key == NULL)
+    {
+        free(e);
+        return;
+    }
+    strcpy(e->key, key);
     e->value = value;
 
-    *(map->list + i) = &e;
+    // 为了避免循环，这里采用入栈的方式进行存储
+    e->next = *(map->list + i);
+    *(map->list + i) = e;
 
     if (++map->size > map->length)
-        _resize();
+        _resize(map);
 }
 
 //-------------------------------------------------------------------------------
@@ -117,15 +187,15 @@ void hashmap_clear(hashmap_t* map)
         return;
 
     size_t i = map->length;
-    while (i > 0)
+    while (i-- > 0)
     {
-        entry_t e = *(map->list + --i);
+        entry_t e = *(map->list + i);
         if (e == NULL)
             continue;
         *(map->list + i) = NULL;
 
         entry_t prev;
-        while (e != NULL)
+        do
         {
             free(e->key);
             e->key = NULL;
@@ -136,7 +206,7 @@ void hashmap_clear(hashmap_t* map)
             e = e->next;
             prev->next = NULL;
             free(prev);
-        }
+        } while (e != NULL);
     }
     map->size = 0;
 }

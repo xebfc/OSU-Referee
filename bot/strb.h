@@ -1,10 +1,14 @@
 #ifndef STRB_H
 #define STRB_H
 
+#include <stdlib.h>
 #include <stddef.h>
 #include <stdarg.h>
 
 #define STR_SIZEOF(len) ((len) * sizeof(char))
+#define STR_MALLOC(len) ( \
+    (char*)malloc(STR_SIZEOF(len)) \
+)
 
 typedef enum
 {

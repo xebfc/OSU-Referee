@@ -4,6 +4,11 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#define FREE_VAL(func, data) { \
+    if (func != NULL) \
+        func(data); \
+}
+
 typedef void (*destroy_t)(void* data);
 
 typedef struct entry
