@@ -25,23 +25,16 @@ static int enable = 1;
 #define GET_UNAME(prefix) ( \
     substr(prefix, 1, indexof_char(prefix, '!')) \
 )
-#define CK_HOST(uname, callback_block) { \
-    if (hexchat_nickcmp(ph, uname, cfg.staff2) != 0 && hexchat_nickcmp(ph, uname, cfg.bot) != 0) \
-    { \
-        utf8_print("非STAFF用户，禁止使用"); \
-        callback_block \
-    } \
-}
 
 typedef struct
 {
-    char staff[CHAR_MAX];        // 为 NULL 时表示bot用户
+    char staff[CHAR_MAX];
     char set[CHAR_MAX];
     char password[CHAR_MAX];
     char sleep[CHAR_MAX];
 
     char bot[CHAR_MAX];         // 用于存放bot用户
-    char* staff2;               // 当前实际host
+    char* staff2;
 } referee_ini_t;
 
 static char* attrs[] = { "staff","set","password","sleep" };
@@ -52,6 +45,28 @@ static void utf8_command(const char* cmd);
 static void utf8_commandf(const char* format, ...);
 static void utf8_print(const char* text);
 static void utf8_printf(const char* format, ...);
+
+static int is_staff(uname)
+{
+    if (hexchat_nickcmp(ph, cfg.bot, uname) == 0)
+        return 1;
+    else if (cfg.staff != NULL)
+    {
+        char staff[CHAR_MAX];
+        strcpy(staff, cfg.staff); // strtok 会改变 staff 的值，strcpy 保证了原字符串的完整性
+
+        char* s = strtok(staff, ",");
+        while (s != NULL)
+        {
+            if (hexchat_nickcmp(ph, s, uname) == 0)
+                return 1;
+
+            s = strtok(NULL,",");
+        }
+    }
+
+    return 0;
+}
 
 static void init_cfg()
 {
@@ -144,7 +159,7 @@ end:
 }
 
 static int
-make_cmd_cb(char* word[], char* word_eol[], void* userdata)
+make_cb(char* word[], char* word_eol[], void* userdata)
 {
     utf8_commandf("MSG %s !make %s", cfg.bot, word_eol[2]);
     return HEXCHAT_EAT_ALL;
@@ -154,7 +169,7 @@ make_cmd_cb(char* word[], char* word_eol[], void* userdata)
 //-------------------------------------------------------------------------------
 
 static int
-y_cb(char* word[], char* word_eol[], void* userdata)
+y_scb(char* word[], char* word_eol[], void* userdata)
 {
     wchar_t* w = from_utf8(word[4]);
     if (wcscmp(w, L":!y") != 0)
@@ -174,22 +189,29 @@ end:
 }
 
 static int
-make_cb(char* word[], char* word_eol[], void* userdata)
+make_scb(char* word[], char* word_eol[], void* userdata)
 {
     if (strcmp(word[4], ":!make") != 0)
         goto end;
 
     char* uname = GET_UNAME(word[1]);
-    CK_HOST(uname, { free(uname); });
+    if (!is_staff(uname))
+    {
+        utf8_commandf("MSG %s 您的权限不足", uname);
+        goto clear;
+    }
 
     utf8_commandf("BB !mp make %s", word_eol[5]);
+
+clear:
+    free(uname);
 
 end:
     return HEXCHAT_EAT_NONE;
 }
 
 static int
-forward_cb(char* word[], char* word_eol[], void* userdata)
+forward_scb(char* word[], char* word_eol[], void* userdata)
 {
     if (strlen(cfg.staff) == 0)
         goto end;
@@ -205,7 +227,7 @@ end:
 }
 
 static int
-join_cb()
+join_scb()
 {
 }
 
@@ -285,23 +307,21 @@ hexchat_plugin_init(hexchat_plugin* plugin_handle,
     *plugin_desc = PDESC;
     *plugin_version = PVERSION;
 
-    // load config
+    // referee.ini
     init_cfg();
-
     const char* nick = hexchat_get_info(ph, "nick");
     strcpy(cfg.bot, nick);
-
     reload_cfg();
 
     // hook command
     utf8_hook_command("BB", HEXCHAT_PRI_NORM, bb_cb, "Usage: BB <message> 给BanchoBot发送消息", NULL);
     utf8_hook_command("INI", HEXCHAT_PRI_NORM, ini_cb, "Usage: INI <key> [value] 查看或修改referee.ini配置", NULL);
-    utf8_hook_command("MAKE", HEXCHAT_PRI_NORM, make_cmd_cb, "See: !make", NULL);
+    utf8_hook_command("MAKE", HEXCHAT_PRI_NORM, make_cb, "See: !make", NULL);
 
     // hook server
-    hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, y_cb, NULL);
-    hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, make_cb, NULL);
-    hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, forward_cb, NULL); // 将bancho私聊消息转发给host
+    hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, y_scb, NULL);
+    hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, make_scb, NULL);
+    //hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, forward_scb, NULL); // 将bancho私聊消息转发给host
 
     hexchat_printf(ph, "%s loaded successfully!\n", PNAME);
     return 1;       /* return 1 for success */
