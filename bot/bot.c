@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <glib.h>
+#include <gmodule.h>
 
 #include "hexchat-plugin.h"
 #include "strb.h"
@@ -59,9 +60,9 @@ static int is_staff(uname)
         while (s != NULL)
         {
             if (hexchat_nickcmp(ph, s, uname) == 0)
-                return 1;
+                return 2;
 
-            s = strtok(NULL,",");
+            s = strtok(NULL, ",");
         }
     }
 
@@ -191,44 +192,38 @@ end:
 static int
 make_scb(char* word[], char* word_eol[], void* userdata)
 {
+    static GQueue* cmder = NULL;
+    if (cmder == NULL)
+        cmder = g_queue_new();
+    // 将bancho私聊消息转发给cmder
+    else if (!g_queue_is_empty(cmder))
+    {
+        char* uname = g_queue_pop_head(cmder);
+        // 确保是bancho发送的信息 && 屏蔽mp房间内私聊消息
+        if (indexof_str(word[1], "BanchoBot") != -1 && hexchat_nickcmp(ph, word[3], cfg.bot) == 0)
+            utf8_commandf("MSG %s %s", uname, word_eol[4] + 1);
+        free(uname);
+        goto end;
+    }
+
     if (strcmp(word[4], ":!make") != 0)
         goto end;
 
     char* uname = GET_UNAME(word[1]);
-    if (!is_staff(uname))
+    int staff_t = is_staff(uname);
+    if (staff_t > 0)
     {
-        utf8_commandf("MSG %s 您的权限不足", uname);
-        goto clear;
+        utf8_commandf("BB !mp make %s", word_eol[5]);
+        if (staff_t == 2)
+            g_queue_push_tail(cmder, uname);
+        goto end;
     }
 
-    utf8_commandf("BB !mp make %s", word_eol[5]);
-
-clear:
+    utf8_commandf("MSG %s 您的权限不足", uname);
     free(uname);
 
 end:
     return HEXCHAT_EAT_NONE;
-}
-
-static int
-forward_scb(char* word[], char* word_eol[], void* userdata)
-{
-    if (strlen(cfg.staff) == 0)
-        goto end;
-
-    char* uname = GET_UNAME(word[1]);
-    // 确保是bancho发送的信息 && 屏蔽mp房间内私聊消息
-    if (strcmp(uname, "BanchoBot") == 0 && hexchat_nickcmp(ph, word[3], cfg.bot) == 0)
-        utf8_commandf("MSG %s %s", cfg.staff2, word_eol[4] + 1);
-    free(uname);
-
-end:
-    return HEXCHAT_EAT_NONE;
-}
-
-static int
-join_scb()
-{
 }
 
 //-------------------------------------------------------------------------------
@@ -321,7 +316,6 @@ hexchat_plugin_init(hexchat_plugin* plugin_handle,
     // hook server
     hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, y_scb, NULL);
     hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, make_scb, NULL);
-    //hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, forward_scb, NULL); // 将bancho私聊消息转发给host
 
     hexchat_printf(ph, "%s loaded successfully!\n", PNAME);
     return 1;       /* return 1 for success */
