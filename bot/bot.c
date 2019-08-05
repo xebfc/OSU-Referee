@@ -21,6 +21,7 @@ static int enable = 1;
 
 #define CHAR_MAX 0xff
 #define PVER_KEY "_pVersion"
+#define BANCHOBOT "BanchoBot"
 
 #define ARR_LEN(a) (sizeof(a) / sizeof(*a))
 #define GET_UNAME(prefix) ( \
@@ -47,6 +48,15 @@ static void utf8_commandf(const char* format, ...);
 static void utf8_print(const char* text);
 static void utf8_printf(const char* format, ...);
 
+/**
+* 判断 uname 是否为staff
+* 由于bot本身需要登录一个用户，因此bot用户自带staff权限
+* 默认情况下当返回值大于0时则判断该用户为staff
+* staff需要在referee.ini文件中进行配置
+*
+* @param uanme 用户名
+* @return 0：非staff用户 1：bot用户 2：staff用户
+*/
 static int is_staff(uname)
 {
     if (hexchat_nickcmp(ph, cfg.bot, uname) == 0)
@@ -114,7 +124,7 @@ bb_cb(char* word[], char* word_eol[], void* userdata)
         goto end;
     }
 
-    utf8_commandf("MSG BanchoBot %s", word_eol[2]);
+    utf8_commandf("MSG %s %s", BANCHOBOT, word_eol[2]);
 
 end:
     return HEXCHAT_EAT_ALL;
@@ -192,16 +202,33 @@ end:
 static int
 make_scb(char* word[], char* word_eol[], void* userdata)
 {
-    static GQueue* cmder = NULL;
-    if (cmder == NULL)
-        cmder = g_queue_new();
-    // 将bancho私聊消息转发给cmder
-    else if (!g_queue_is_empty(cmder))
+    static GQueue* creator = NULL;
+    if (creator == NULL)
+        creator = g_queue_new();
+    else if (!g_queue_is_empty(creator))
     {
-        char* uname = g_queue_pop_head(cmder);
-        // 确保是bancho发送的信息 && 屏蔽mp房间内私聊消息
-        if (indexof_str(word[1], "BanchoBot") != -1 && hexchat_nickcmp(ph, word[3], cfg.bot) == 0)
-            utf8_commandf("MSG %s %s", uname, word_eol[4] + 1);
+        char* uname = g_queue_pop_head(creator);
+        // 确保是bancho发送的消息 && 屏蔽mp房内消息（必须是私聊给bot用户的消息）
+        if (indexof_str(word[1], BANCHOBOT) != -1 && hexchat_nickcmp(ph, word[3], cfg.bot) == 0)
+        {
+            int is_bot = hexchat_nickcmp(ph, uname, cfg.bot) == 0 ? 1 : 0;
+
+            if (!is_bot)
+                utf8_commandf("MSG %s %s", uname, word_eol[4] + 1); // 将bancho私聊消息转发给创建者
+
+            // 当房间创建成功时
+            if (indexof_str(word_eol[4], "Created the tournament match") != -1)
+            {
+                int beginIndex = last_indexof_char(word[8], '/') + 1,
+                    endIndex = strlen(word[8]);
+                char* mp_id = substr(word[8], beginIndex, endIndex);
+
+                if (!is_bot)
+                    utf8_commandf("MSG #mp_%s !mp invite %s", mp_id, uname); // 邀请创建者进房
+
+                free(mp_id);
+            }
+        }
         free(uname);
         goto end;
     }
@@ -210,12 +237,10 @@ make_scb(char* word[], char* word_eol[], void* userdata)
         goto end;
 
     char* uname = GET_UNAME(word[1]);
-    int staff_t = is_staff(uname);
-    if (staff_t > 0)
+    if (is_staff(uname) > 0)
     {
         utf8_commandf("BB !mp make %s", word_eol[5]);
-        if (staff_t == 2)
-            g_queue_push_tail(cmder, uname);
+        g_queue_push_tail(creator, uname);
         goto end;
     }
 
