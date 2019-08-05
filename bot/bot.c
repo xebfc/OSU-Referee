@@ -224,7 +224,10 @@ make_scb(char* word[], char* word_eol[], void* userdata)
                 char* mp_id = substr(word[8], beginIndex, endIndex);
 
                 if (!is_bot)
+                {
                     utf8_commandf("MSG #mp_%s !mp invite %s", mp_id, uname); // 邀请创建者进房
+                    utf8_commandf("MSG #mp_%s !mp addref %s", mp_id, uname); // 允许创建者使用mp指令
+                }
 
                 free(mp_id);
             }
