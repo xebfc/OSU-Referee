@@ -242,8 +242,8 @@ make_scb(char* word[], char* word_eol[], void* userdata)
     char* uname = GET_UNAME(word[1]);
     if (is_staff(uname) > 0)
     {
-        utf8_commandf("BB !mp make %s", word_eol[5]);
         g_queue_push_tail(creator, uname);
+        utf8_commandf("BB !mp make %s", word_eol[5]);
         goto end;
     }
 
