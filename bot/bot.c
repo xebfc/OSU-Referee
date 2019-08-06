@@ -320,24 +320,25 @@ make_scb(char* word[], char* word_eol[], void* userdata)
         goto end;
 
     char* uname = GET_UNAME(word[1]);
-
     GRegex* reg = g_regex_new("^.+: (.+) vs (.+)$", G_REGEX_RAW, 0, NULL);
-    if (strlen(word_eol[6]) > 0 && !g_regex_match(reg, word_eol[6], 0, NULL))
-    {
-        utf8_commandf("MSG %s 您必须根据 osu!tourney 控制面板列出的模板创建一个多人房间。", uname);
-        utf8_commandf("MSG %s 此模板包括：Your_acronym_in_tournament.cfg: (Team Name 1) vs (Team Name 2)", uname);
-        utf8_commandf("MSG %s Your_acronym_in_tournament.cfg 您可以在 tournaments.cfg 里改变比赛的简称。", uname);
-        utf8_commandf("MSG %s 在我们的例子中，这个简称为 \"Test Tourney\"。", uname);
-        utf8_commandf("MSG %s Test Tourney: (Team Name 1) vs (Team Name 2)", uname);
-        utf8_commandf(
-            "MSG %s 您可以使用您的队伍名称替换 \"Team Name 1\" 和 \"Team Name 2\"，不过请在其周围保留括号。"
-            , uname);
-
-        goto err;
-    }
-
     if (is_staff(uname) > 0)
     {
+        if (strlen(word_eol[6]) > 0 && !g_regex_match(reg, word_eol[6], 0, NULL))
+        {
+            utf8_commandf("MSG %s 您必须根据 osu!tourney 控制面板列出的模板创建一个多人房间。", uname);
+            utf8_commandf("MSG %s 此模板包括：Your_acronym_in_tournament.cfg: (Team Name 1) vs (Team Name 2)"
+                , uname);
+            utf8_commandf("MSG %s Your_acronym_in_tournament.cfg 您可以在 tournaments.cfg 里改变比赛的简称。"
+                , uname);
+            utf8_commandf("MSG %s 在我们的例子中，这个简称为 \"Test Tourney\"。", uname);
+            utf8_commandf("MSG %s Test Tourney: (Team Name 1) vs (Team Name 2)", uname);
+            utf8_commandf(
+                "MSG %s 您可以使用您的队伍名称替换 \"Team Name 1\" 和 \"Team Name 2\"，不过请在其周围保留括号。"
+                , uname);
+
+            goto err;
+        }
+
         g_queue_push_tail(creator, uname);
         utf8_commandf("BB !mp make %s", word_eol[6]);
         goto clear;
