@@ -50,14 +50,14 @@ void strb_free(strb_t* buffer)
     free(buffer);
 }
 
-static void _after(strb_t* dest, const char* src, size_t n, size_t old_size, size_t new_size)
+static void _ahead(strb_t* dest, const char* src, size_t n, size_t old_size, size_t new_size)
 {
-    memmove(dest->str + n, dest->str, STR_SIZEOF(n));
+    memmove(dest->str + n, dest->str, STR_SIZEOF(old_size));
     memcpy(dest->str, src, STR_SIZEOF(n));
     *(dest->str + new_size - 1) = '\0';
 }
 
-static void _before(strb_t* dest, const char* src, size_t n, size_t old_size, size_t new_size)
+static void _behind(strb_t* dest, const char* src, size_t n, size_t old_size, size_t new_size)
 {
     memcpy(dest->str + (old_size - 1), src, STR_SIZEOF(n));
     *(dest->str + new_size - 1) = '\0';
@@ -107,42 +107,42 @@ static strb_err_code _cat(strb_t* dest, const char* src, size_t n, save_t func)
 
 strb_err_code strb_cat(strb_t* dest, const char* src)
 {
-    return  _cat(dest, src, strlen(src), _before);
+    return  _cat(dest, src, strlen(src), _behind);
 }
 
 strb_err_code strb_ncat(strb_t* dest, const char* src, size_t n)
 {
-    return _cat(dest, src, n, _before);
+    return _cat(dest, src, n, _behind);
 }
 
 strb_err_code strb_precat(strb_t* dest, const char* src)
 {
-    return _cat(dest, src, strlen(src), _after);
+    return _cat(dest, src, strlen(src), _ahead);
 }
 
 strb_err_code strb_prencat(strb_t* dest, const char* src, size_t n)
 {
-    return _cat(dest, src, n, _after);
+    return _cat(dest, src, n, _ahead);
 }
 
 strb_err_code strb_cat_buffer(strb_t* dest, strb_t* src)
 {
-    return _cat(dest, src->str, src->length - 1, _before);
+    return _cat(dest, src->str, src->length - 1, _behind);
 }
 
 strb_err_code strb_ncat_buffer(strb_t* dest, strb_t* src, size_t n)
 {
-    return _cat(dest, src->str, n, _before);
+    return _cat(dest, src->str, n, _behind);
 }
 
 strb_err_code strb_precat_buffer(strb_t* dest, strb_t* src)
 {
-    return _cat(dest, src->str, src->length - 1, _after);
+    return _cat(dest, src->str, src->length - 1, _ahead);
 }
 
 strb_err_code strb_prencat_buffer(strb_t* dest, strb_t* src, size_t n)
 {
-    return _cat(dest, src->str, n, _after);
+    return _cat(dest, src->str, n, _ahead);
 }
 
 int strb_strlen(strb_t* buffer)
@@ -150,7 +150,7 @@ int strb_strlen(strb_t* buffer)
     if (buffer == NULL)
         return -1;
 
-    return strlen(buffer->str);
+    return buffer->length - 1;
 }
 
 int strb_indexof_char(strb_t* buffer, int c)
@@ -237,6 +237,26 @@ strb_err_code strb_append_vsprintf(strb_t* buffer, const char* format, va_list a
         return STRB_RESIZE_FAILED;
 
     vsnprintf(buffer->str + old_size - 1, len + 1, format, args);
+
+    return STRB_NO_ERR;
+}
+
+strb_err_code strb_substr(strb_t* buffer, int beginIndex, int endIndex)
+{
+    if (buffer == NULL)
+        //buffer = strb_new(NULL);
+        return STRB_NEW_FAILED;
+
+    // 与 memmove + _resize 相同，之所以选择 substr，是因为 memmove 会修改原字符串，
+    // 在 _resize 失败时，若考虑使用临时变量恢复，会比 substr 额外多出两次内存操作。
+    char* new_str = substr(buffer->str, beginIndex, endIndex);
+    if (new_str == NULL)
+        return STRB_RESIZE_FAILED;
+
+    free(buffer->str);
+    buffer->str = new_str;
+
+    buffer->length = endIndex - beginIndex + 1;
 
     return STRB_NO_ERR;
 }

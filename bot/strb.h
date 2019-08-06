@@ -54,6 +54,8 @@ strb_err_code strb_append_sprintf(strb_t* buffer, const char* format, ...);
 strb_err_code strb_vsprintf(strb_t* buffer, const char* format, va_list args);
 strb_err_code strb_append_vsprintf(strb_t* buffer, const char* format, va_list args);
 
+strb_err_code strb_substr(strb_t* buffer, int beginIndex, int endIndex);
+
 //-------------------------------------------------------------------------------
 
 int indexof_char(const char* str, int c);

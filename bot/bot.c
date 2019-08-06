@@ -17,6 +17,11 @@
 static hexchat_plugin* ph;      /* plugin handle */
 static int enable = 1;
 
+static void utf8_command(const char* cmd);
+static void utf8_commandf(const char* format, ...);
+static void utf8_print(const char* text);
+static void utf8_printf(const char* format, ...);
+
 //-------------------------------------------------------------------------------
 
 #define CHAR_MAX 0xff
@@ -27,6 +32,7 @@ static int enable = 1;
 #define GET_UNAME(prefix) ( \
     substr(prefix, 1, indexof_char(prefix, '!')) \
 )
+#define IS_BOT(uname) (hexchat_nickcmp(ph, cfg.bot, uname) == 0)
 
 typedef struct
 {
@@ -43,23 +49,18 @@ static char* attrs[] = { "staff","set","password","sleep" };
 static char* attrs_default_value[] = { "","2 0 16","998","300" };
 static referee_ini_t cfg;
 
-static void utf8_command(const char* cmd);
-static void utf8_commandf(const char* format, ...);
-static void utf8_print(const char* text);
-static void utf8_printf(const char* format, ...);
-
 /**
 * 判断 uname 是否为staff
 * 由于bot本身需要登录一个用户，因此bot用户自带staff权限
 * 默认情况下当返回值大于0时则判断该用户为staff
-* staff需要在referee.ini文件中进行配置
+* staff用户需要在referee.ini文件中进行配置
 *
 * @param uanme 用户名
 * @return 0：非staff用户 1：bot用户 2：staff用户
 */
 static int is_staff(uname)
 {
-    if (hexchat_nickcmp(ph, cfg.bot, uname) == 0)
+    if (IS_BOT(uname))
         return 1;
     else if (cfg.staff != NULL)
     {
@@ -211,25 +212,30 @@ make_scb(char* word[], char* word_eol[], void* userdata)
         // 确保是bancho发送的消息 && 屏蔽mp房内消息（必须是私聊给bot用户的消息）
         if (indexof_str(word[1], BANCHOBOT) != -1 && hexchat_nickcmp(ph, word[3], cfg.bot) == 0)
         {
-            int is_bot = hexchat_nickcmp(ph, uname, cfg.bot) == 0 ? 1 : 0;
+            int only_staff = !IS_BOT(uname);
 
-            if (!is_bot)
+            if (only_staff)
                 utf8_commandf("MSG %s %s", uname, word_eol[4] + 1); // 将bancho私聊消息转发给创建者
 
-            // 当房间创建成功时
+            // 当mp房间创建成功时
             if (indexof_str(word_eol[4], "Created the tournament match") != -1)
             {
-                int beginIndex = last_indexof_char(word[8], '/') + 1,
-                    endIndex = strlen(word[8]);
-                char* mp_id = substr(word[8], beginIndex, endIndex);
+                strb_t* mp_channel = strb_new(word[8]);
+                int beginIndex = strb_last_indexof_char(mp_channel, '/') + 1;
+                strb_substr(mp_channel, beginIndex, strb_strlen(mp_channel));
+                strb_precat(mp_channel, "#mp_");
 
-                if (!is_bot)
+                if (only_staff)
                 {
-                    utf8_commandf("MSG #mp_%s !mp invite %s", mp_id, uname); // 邀请创建者进房
-                    utf8_commandf("MSG #mp_%s !mp addref %s", mp_id, uname); // 允许创建者使用mp指令
+                    utf8_commandf("MSG %s !mp invite %s", mp_channel->str, uname); // 邀请创建者进房
+                    utf8_commandf("MSG %s !mp addref %s", mp_channel->str, uname); // 允许创建者使用mp指令
                 }
 
-                free(mp_id);
+                // 设置房间
+                utf8_commandf("MSG %s !mp set %s", mp_channel->str, cfg.set);
+                utf8_commandf("MSG %s !mp password %s", mp_channel->str, cfg.password);
+
+                strb_free(mp_channel);
             }
         }
         free(uname);
