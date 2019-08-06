@@ -24,10 +24,10 @@
     <ClCompile Include="wcsb.c">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="promise.c">
+    <ClCompile Include="hashmap.c">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="hashmap.c">
+    <ClCompile Include="tournament.c">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -43,10 +43,10 @@
     <ClInclude Include="wcsb.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="promise.h">
+    <ClInclude Include="hashmap.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="hashmap.h">
+    <ClInclude Include="tournament.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

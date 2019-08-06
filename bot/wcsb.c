@@ -8,7 +8,7 @@
     (wchar_t*)malloc(WCS_SIZEOF(len)) \
 )
 
-wchar_t* from_utf8(char* str)
+wchar_t* filename_from_utf8(char* str)
 {
     wchar_t* wcs;
     int len;
@@ -21,7 +21,7 @@ wchar_t* from_utf8(char* str)
 
 #else
 
-    gchar* ptr = _G_LOCALE_FROM_UTF8(str);
+    gchar* ptr = _G_FILENAME_FROM_UTF8(str);
 
     len = mbstowcs(NULL, ptr, 0) + 1;
     wcs = WCS_MALLOC(len);

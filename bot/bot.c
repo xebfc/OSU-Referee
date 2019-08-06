@@ -1,4 +1,3 @@
-#include <wchar.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
@@ -8,19 +7,82 @@
 #include "hexchat-plugin.h"
 #include "strb.h"
 #include "wcsb.h"
-#include "promise.h"
+#include "tournament.h"
+#include "hashmap.h"
 
 #define PNAME "OSU!Referee"
 #define PDESC "Simple Edition Automated Referee"
 #define PVERSION "0.1"
 
-static hexchat_plugin* ph;      /* plugin handle */
+#define WORD_LIMIT 32
+
+static hexchat_plugin * ph;      /* plugin handle */
 static int enable = 1;
+
+typedef int (*hook_callback) (char* word[], char* word_eol[], void* user_data);
+
+typedef struct
+{
+    void* userdata;
+    hook_callback func;
+} userdata_t;
 
 static void utf8_command(const char* cmd);
 static void utf8_commandf(const char* format, ...);
 static void utf8_print(const char* text);
 static void utf8_printf(const char* format, ...);
+static hexchat_hook* utf8_hook_command(const char* name,
+    int pri,
+    hook_callback callback,
+    const char* help_text,
+    void* userdata);
+static hexchat_hook* utf8_hook_server(const char* name,
+    int pri,
+    hook_callback callback,
+    void* userdata);
+static void* utf8_unhook(hexchat_hook* hook);
+
+static userdata_t*
+userdata_new(void* userdata, hook_callback func)
+{
+    userdata_t* data = (userdata_t*)malloc(sizeof(userdata_t));
+    if (data == NULL)
+        return NULL;
+
+    data->userdata = userdata;
+    data->func = func;
+
+    return data;
+}
+
+static int
+_param_from_utf8(char* word[], char* word_eol[], void* userdata)
+{
+    char* local_word[WORD_LIMIT],
+        * local_word_eol[WORD_LIMIT];
+
+    int i = WORD_LIMIT;
+    while (i-- > 0)
+    {
+        local_word[i] = _G_LOCALE_FROM_UTF8(word[i]);
+        local_word_eol[i] = _G_LOCALE_FROM_UTF8(word_eol[i]);
+    }
+
+    userdata_t* data = (userdata_t*)userdata;
+    int eat = data->func(&local_word, &local_word_eol, data->userdata);
+
+    i = WORD_LIMIT;
+    while (i-- > 0)
+    {
+        g_free(local_word[i]);
+        local_word[i] == NULL;
+
+        g_free(local_word_eol[i]);
+        local_word_eol[i] = NULL;
+    }
+
+    return eat;
+}
 
 //-------------------------------------------------------------------------------
 
@@ -88,7 +150,7 @@ static void init_cfg()
         return;
 
     int len = ARR_LEN(attrs);
-    while (len--)
+    while (len-- > 0)
         if (hexchat_pluginpref_get_str(ph, attrs[len], NULL) == 0)
             hexchat_pluginpref_set_str(ph, attrs[len], attrs_default_value[len]);
     hexchat_pluginpref_set_str(ph, PVER_KEY, PVERSION);
@@ -97,7 +159,7 @@ static void init_cfg()
 static void reload_cfg()
 {
     int len = ARR_LEN(attrs);
-    while (len--)
+    while (len-- > 0)
     {
         char* attr = &cfg.staff + len;
         hexchat_pluginpref_get_str(ph, attrs[len], attr);
@@ -173,7 +235,7 @@ end:
 static int
 make_cb(char* word[], char* word_eol[], void* userdata)
 {
-    utf8_commandf("MSG %s !make %s", cfg.bot, word_eol[2]);
+    utf8_commandf("MSG %s !mp make %s", cfg.bot, word_eol[2]);
     return HEXCHAT_EAT_ALL;
 }
 
@@ -183,18 +245,28 @@ make_cb(char* word[], char* word_eol[], void* userdata)
 static int
 y_scb(char* word[], char* word_eol[], void* userdata)
 {
-    wchar_t* w = from_utf8(word[4]);
-    if (wcscmp(w, L":!y") != 0)
+    if (strcmp(word[4], ":!y") != 0)
         goto end;
-    free(w);
 
-    w = from_utf8(word[1]);
-    int index = indexof_wc(w, L'!');
-    wchar_t* sender = subws(w, 1, index);
-    free(w);
-
-    utf8_commandf("MSG %ls 斯哈斯哈", sender);
+    char* sender = GET_UNAME(word[1]);
+    utf8_commandf("MSG %s 斯哈斯哈", sender);
     free(sender);
+
+end:
+    return HEXCHAT_EAT_NONE;
+}
+
+static int
+x_scb(char* word[], char* word_eol[], void* userdata)
+{
+    if (strcmp(word[4], ":雪") != 0)
+        goto end;
+
+    char* sender = GET_UNAME(word[1]);
+    utf8_commandf("MSG %s 哧溜~", sender);
+    free(sender);
+
+    tourney_new("110", "OSAR: (莉莉商店) vs (CSGA邪教)");
 
 end:
     return HEXCHAT_EAT_NONE;
@@ -231,6 +303,8 @@ make_scb(char* word[], char* word_eol[], void* userdata)
                     utf8_commandf("MSG %s !mp addref %s", mp_channel->str, uname); // 允许创建者使用mp指令
                 }
 
+                tourney_new(mp_channel->str, word_eol[9]); // 解析队名
+
                 // 设置房间
                 utf8_commandf("MSG %s !mp set %s", mp_channel->str, cfg.set);
                 utf8_commandf("MSG %s !mp password %s", mp_channel->str, cfg.password);
@@ -242,7 +316,7 @@ make_scb(char* word[], char* word_eol[], void* userdata)
         goto end;
     }
 
-    if (strcmp(word[4], ":!make") != 0)
+    if (indexof_str(word_eol[4], "!mp make") == -1)
         goto end;
 
     char* uname = GET_UNAME(word[1]);
@@ -311,14 +385,42 @@ utf8_printf(const char* format, ...)
 static hexchat_hook*
 utf8_hook_command(const char* name,
     int pri,
-    int (*callback) (char* word[], char* word_eol[], void* user_data),
+    hook_callback callback,
     const char* help_text,
     void* userdata)
 {
+    userdata_t* data = userdata_new(userdata, callback);
+    if (data == NULL)
+        return NULL;
+
     gchar* help_text_utf8 = _G_LOCALE_TO_UTF8(help_text);
-    hexchat_hook* hook = hexchat_hook_command(ph, name, pri, callback, help_text_utf8, userdata);
+    hexchat_hook* hook = hexchat_hook_command(ph, name, pri, _param_from_utf8, help_text_utf8, data);
     g_free(help_text_utf8);
+
     return hook;
+}
+
+static hexchat_hook*
+utf8_hook_server(const char* name,
+    int pri,
+    hook_callback callback,
+    void* userdata)
+{
+    userdata_t* data = userdata_new(userdata, callback);
+    if (data == NULL)
+        return NULL;
+
+    return hexchat_hook_server(ph, name, pri, _param_from_utf8, data);
+}
+
+static void*
+utf8_unhook(hexchat_hook* hook)
+{
+    userdata_t* data = (userdata_t*)hexchat_unhook(ph, hook);
+    void* userdata = data->userdata;
+    free(data);
+
+    return userdata;
 }
 
 int
@@ -348,8 +450,9 @@ hexchat_plugin_init(hexchat_plugin* plugin_handle,
     utf8_hook_command("MAKE", HEXCHAT_PRI_NORM, make_cb, "See: !make", NULL);
 
     // hook server
-    hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, y_scb, NULL);
-    hexchat_hook_server(ph, "PRIVMSG", HEXCHAT_PRI_NORM, make_scb, NULL);
+    utf8_hook_server("PRIVMSG", HEXCHAT_PRI_NORM, y_scb, NULL);
+    utf8_hook_server("PRIVMSG", HEXCHAT_PRI_NORM, x_scb, NULL);
+    utf8_hook_server("PRIVMSG", HEXCHAT_PRI_NORM, make_scb, NULL);
 
     hexchat_printf(ph, "%s loaded successfully!\n", PNAME);
     return 1;       /* return 1 for success */
