@@ -31,9 +31,9 @@ tourney_t* tourney_new(char* channel, char* name)
     if (t == NULL)
         return NULL;
 
-    t->acronym = STR_MALLOC(0);
-    t->blue_team = STR_MALLOC(0);
-    t->red_team = STR_MALLOC(0);
+    t->acronym = substr(name, 0, indexof_char(name, ':'));
+    t->blue_team = substr(name, indexof_char(name, '(') + 1, indexof_char(name, ')'));
+    t->red_team = substr(name, last_indexof_char(name, '(') + 1, last_indexof_char(name, ')'));
 
     hashmap_put(matches, channel, t);
     return t;

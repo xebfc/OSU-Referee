@@ -89,6 +89,7 @@ _param_from_utf8(char* word[], char* word_eol[], void* userdata)
 #define CHAR_MAX 0xff
 #define PVER_KEY "_pVersion"
 #define BANCHOBOT "BanchoBot"
+#define DEFAULT_ROOM_NAME "OSAR: (Blue Team) vs (Red Team)"
 
 #define ARR_LEN(a) (sizeof(a) / sizeof(*a))
 #define GET_UNAME(prefix) ( \
@@ -235,7 +236,8 @@ end:
 static int
 make_cb(char* word[], char* word_eol[], void* userdata)
 {
-    utf8_commandf("MSG %s !mp make %s", cfg.bot, word_eol[2]);
+    utf8_commandf("MSG %s !mp make %s", cfg.bot
+        , strlen(word_eol[2]) > 0 ? word_eol[2] : DEFAULT_ROOM_NAME);
     return HEXCHAT_EAT_ALL;
 }
 
@@ -265,8 +267,6 @@ x_scb(char* word[], char* word_eol[], void* userdata)
     char* sender = GET_UNAME(word[1]);
     utf8_commandf("MSG %s 哧溜~", sender);
     free(sender);
-
-    tourney_new("110", "OSAR: (莉莉商店) vs (CSGA邪教)");
 
 end:
     return HEXCHAT_EAT_NONE;
@@ -303,7 +303,7 @@ make_scb(char* word[], char* word_eol[], void* userdata)
                     utf8_commandf("MSG %s !mp addref %s", mp_channel->str, uname); // 允许创建者使用mp指令
                 }
 
-                tourney_new(mp_channel->str, word_eol[9]); // 解析队名
+                tourney_new(mp_channel->str, word_eol[9]); // 解析房名
 
                 // 设置房间
                 utf8_commandf("MSG %s !mp set %s", mp_channel->str, cfg.set);
@@ -320,15 +320,36 @@ make_scb(char* word[], char* word_eol[], void* userdata)
         goto end;
 
     char* uname = GET_UNAME(word[1]);
+
+    GRegex* reg = g_regex_new("^.+: (.+) vs (.+)$", G_REGEX_RAW, 0, NULL);
+    if (strlen(word_eol[6]) > 0 && !g_regex_match(reg, word_eol[6], 0, NULL))
+    {
+        utf8_commandf("MSG %s 您必须根据 osu!tourney 控制面板列出的模板创建一个多人房间。", uname);
+        utf8_commandf("MSG %s 此模板包括：Your_acronym_in_tournament.cfg: (Team Name 1) vs (Team Name 2)", uname);
+        utf8_commandf("MSG %s Your_acronym_in_tournament.cfg 您可以在 tournaments.cfg 里改变比赛的简称。", uname);
+        utf8_commandf("MSG %s 在我们的例子中，这个简称为 \"Test Tourney\"。", uname);
+        utf8_commandf("MSG %s Test Tourney: (Team Name 1) vs (Team Name 2)", uname);
+        utf8_commandf(
+            "MSG %s 您可以使用您的队伍名称替换 \"Team Name 1\" 和 \"Team Name 2\"，不过请在其周围保留括号。"
+            , uname);
+
+        goto err;
+    }
+
     if (is_staff(uname) > 0)
     {
         g_queue_push_tail(creator, uname);
-        utf8_commandf("BB !mp make %s", word_eol[5]);
-        goto end;
+        utf8_commandf("BB !mp make %s", word_eol[6]);
+        goto clear;
     }
 
     utf8_commandf("MSG %s 您的权限不足", uname);
+
+err:
     free(uname);
+
+clear:
+    g_regex_unref(reg);
 
 end:
     return HEXCHAT_EAT_NONE;
