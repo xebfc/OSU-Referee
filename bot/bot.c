@@ -315,7 +315,7 @@ end:
 }
 
 static int
-make_scb(char* word[], char* word_eol[], void* userdata)
+mp_make_scb(char* word[], char* word_eol[], void* userdata)
 {
     static GQueue* creator = NULL;
     if (creator == NULL)
@@ -323,8 +323,8 @@ make_scb(char* word[], char* word_eol[], void* userdata)
     else if (!g_queue_is_empty(creator))
     {
         char* uname = g_queue_pop_head(creator);
-        // 确保是bancho发送的消息 && 屏蔽mp房内消息（必须是私聊给bot用户的消息）
-        if (indexof_str(word[1], BANCHOBOT) != -1 && hexchat_nickcmp(ph, word[3], cfg.bot) == 0)
+        // 确保是bancho发送的消息 && 屏蔽mp房内消息
+        if (indexof_str(word[1], BANCHOBOT) != -1 && IS_BOT(word[3]))
         {
             int only_staff = !IS_BOT(uname);
 
@@ -339,17 +339,18 @@ make_scb(char* word[], char* word_eol[], void* userdata)
                 strb_substr(mp_channel, beginIndex, strb_strlen(mp_channel));
                 strb_precat(mp_channel, "#mp_");
 
-                if (only_staff)
-                {
-                    utf8_commandf("MSG %s !mp invite %s", mp_channel->str, uname); // 邀请创建者进房
-                    utf8_commandf("MSG %s !mp addref %s", mp_channel->str, uname); // 允许创建者使用mp指令
-                }
-
                 tourney_new(mp_channel->str, word_eol[9]); // 解析房名
 
                 // 设置房间
                 utf8_commandf("MSG %s !mp set %s", mp_channel->str, cfg.set);
                 utf8_commandf("MSG %s !mp password %s", mp_channel->str, cfg.password);
+
+                if (only_staff)
+                {
+                    // 邀请操作必须在密码修改后执行
+                    utf8_commandf("MSG %s !mp invite %s", mp_channel->str, uname); // 邀请创建者进房
+                    utf8_commandf("MSG %s !mp addref %s", mp_channel->str, uname); // 允许创建者使用mp指令
+                }
 
                 strb_free(mp_channel);
             }
@@ -358,7 +359,8 @@ make_scb(char* word[], char* word_eol[], void* userdata)
         goto end;
     }
 
-    if (indexof_str(word_eol[4], "!mp make") == -1)
+    // 为了避免在mp房内输入会被BanchoBot直接执行，这里只允许私聊
+    if (indexof_str(word_eol[4], "!mp make") == -1 || !IS_BOT(word[3]))
         goto end;
 
     char* uname = GET_UNAME(word[1]);
@@ -393,6 +395,19 @@ err:
 
 clear:
     g_regex_unref(reg);
+
+end:
+    return HEXCHAT_EAT_NONE;
+}
+
+static int
+mp_init_scb(char* word[], char* word_eol[], void* userdata)
+{
+    if (strcmp(word[2], "QUIT") != 0)
+        utf8_print(word_eol[1]);
+
+    if (indexof_str(word_eol[4], "!mp init") == -1)
+        goto end;
 
 end:
     return HEXCHAT_EAT_NONE;
@@ -461,7 +476,7 @@ utf8_hook_command(const char* name,
     hexchat_hook* hook = hexchat_hook_command(ph, name, pri, _param_from_utf8, help_text_utf8, data);
     g_free(help_text_utf8);
 
-    //free(data); // 不释放是因为回调函数的存在
+    //free(data); // 因为有回调函数，不能在这里释放
     return hook;
 }
 
@@ -512,12 +527,13 @@ hexchat_plugin_init(hexchat_plugin* plugin_handle,
     // hook command
     utf8_hook_command("BB", HEXCHAT_PRI_NORM, bb_cb, "Usage: BB <message> 给BanchoBot发送消息", NULL);
     utf8_hook_command("INI", HEXCHAT_PRI_NORM, ini_cb, "Usage: INI <key> [value] 查看或修改referee.ini配置", NULL);
-    utf8_hook_command("MAKE", HEXCHAT_PRI_NORM, make_cb, "See: !make", NULL);
+    utf8_hook_command("MAKE", HEXCHAT_PRI_NORM, make_cb, "Usage: MAKE <name> 创建mp房间", NULL);
 
     // hook server
     utf8_hook_server("PRIVMSG", HEXCHAT_PRI_NORM, y_scb, NULL);
     utf8_hook_server("PRIVMSG", HEXCHAT_PRI_NORM, x_scb, NULL);
-    utf8_hook_server("PRIVMSG", HEXCHAT_PRI_NORM, make_scb, NULL);
+    utf8_hook_server("PRIVMSG", HEXCHAT_PRI_NORM, mp_make_scb, NULL);
+    utf8_hook_server("RAW LINE", HEXCHAT_PRI_NORM, mp_init_scb, NULL);
 
     hexchat_printf(ph, "%s loaded successfully!\n", PNAME);
     return 1;       /* return 1 for success */

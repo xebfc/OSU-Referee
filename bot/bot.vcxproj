@@ -13,7 +13,6 @@
   <ItemGroup>
     <ClCompile Include="bot.c" />
     <ClCompile Include="hashmap.c" />
-    <ClCompile Include="tournament.c" />
     <ClCompile Include="strb.c" />
     <ClCompile Include="wcsb.c" />
   </ItemGroup>
@@ -22,7 +21,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="hashmap.h" />
-    <ClInclude Include="tournament.h" />
     <ClInclude Include="strb.h" />
     <ClInclude Include="wcsb.h" />
   </ItemGroup>

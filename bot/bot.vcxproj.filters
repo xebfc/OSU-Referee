@@ -27,9 +27,6 @@
     <ClCompile Include="hashmap.c">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="tournament.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="bot.def">
@@ -44,9 +41,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="hashmap.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="tournament.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
