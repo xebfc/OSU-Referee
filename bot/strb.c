@@ -292,3 +292,10 @@ char* substr(const char* str, int beginIndex, int endIndex)
     *(ptr + len) = '\0';
     return ptr;
 }
+
+char* newstr(const char* str)
+{
+    char* src = (str == NULL ? "" : str), // 带括号更为直观，有利于提高代码可读性
+        * ptr = STR_MALLOC(strlen(src) + 1);
+    return ptr != NULL ? strcpy(ptr, src) : NULL;
+}

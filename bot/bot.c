@@ -3,6 +3,7 @@
 #include <string.h>
 #include <glib.h>
 #include <gmodule.h>
+#include <stdint.h>
 
 #include "hexchat-plugin.h"
 #include "strb.h"
@@ -32,6 +33,7 @@
     substr(prefix, 1, indexof_char(prefix, '!')) \
 )
 #define IS_BOT(uname) (hexchat_nickcmp(ph, cfg.bot, uname) == 0)
+#define GET_TOURNEY(channel) ((tourney_t*)hashmap_get(matches, channel))
 
 typedef int (*hook_callback) (char* word[], char* word_eol[], void* user_data);
 
@@ -49,7 +51,7 @@ typedef struct
     char sleep[CHAR_MAX];
 
     char bot[CHAR_MAX];         // 用于存放bot用户
-    char* staff2;
+    char* staff2;               // staff 或 bot 的引用，不需要释放
 } referee_ini_t;
 
 typedef struct
@@ -57,6 +59,13 @@ typedef struct
     char* acronym;              // 比赛缩写
     char* blue_team;
     char* red_team;
+
+    char* channel;              // 所属频道
+    char* room_name;            // 房间名
+    char* creator;              // 创建者
+
+    uint8_t bo;
+    uint16_t wait;
 } tourney_t;
 
 static hexchat_plugin* ph;      /* plugin handle */
@@ -193,15 +202,25 @@ static void tourney_free(void* data)
         return;
 
     tourney_t* t = (tourney_t*)data;
+
     free(t->acronym);
     free(t->blue_team);
     free(t->red_team);
+    free(t->channel);
+    free(t->room_name);
+    free(t->creator);
 
-    t = NULL;
+    t->acronym = NULL;
+    t->blue_team = NULL;
+    t->blue_team = NULL;
+    t->channel = NULL;
+    t->room_name = NULL;
+    t->creator = NULL;
+    
     free(data);
 }
 
-static tourney_t* tourney_new(char* channel, char* name)
+static tourney_t* tourney_new(char* channel, char* name, char* creator)
 {
     if (matches == NULL)
         matches = hashmap_new(tourney_free);
@@ -210,9 +229,14 @@ static tourney_t* tourney_new(char* channel, char* name)
     if (t == NULL)
         return NULL;
 
+    // 模板格式：Tourney Name: (Blue Team Name) vs (Red Team Name)
     t->acronym = substr(name, 0, indexof_char(name, ':'));
     t->blue_team = substr(name, indexof_char(name, '(') + 1, indexof_char(name, ')'));
     t->red_team = substr(name, last_indexof_char(name, '(') + 1, last_indexof_char(name, ')'));
+
+    t->channel = channel;
+    t->room_name = newstr(name);
+    t->creator = creator;
 
     hashmap_put(matches, channel, t);
     return t;
@@ -339,7 +363,7 @@ mp_make_scb(char* word[], char* word_eol[], void* userdata)
                 strb_substr(mp_channel, beginIndex, strb_strlen(mp_channel));
                 strb_precat(mp_channel, "#mp_");
 
-                tourney_new(mp_channel->str, word_eol[9]); // 解析房名
+                tourney_new(mp_channel->str, word_eol[9], uname); // 解析房名
 
                 // 设置房间
                 utf8_commandf("MSG %s !mp set %s", mp_channel->str, cfg.set);
@@ -349,13 +373,14 @@ mp_make_scb(char* word[], char* word_eol[], void* userdata)
                 {
                     // 邀请操作必须在密码修改后执行
                     utf8_commandf("MSG %s !mp invite %s", mp_channel->str, uname); // 邀请创建者进房
-                    utf8_commandf("MSG %s !mp addref %s", mp_channel->str, uname); // 允许创建者使用mp指令
+                    utf8_commandf("MSG %s !mp addref %s", mp_channel->str, uname); // 允许创建者使用mp（原生）指令
                 }
 
-                strb_free(mp_channel);
+                //strb_free(mp_channel);
+                free(mp_channel); // mp_channel->str 被 tourney_new 保存
             }
         }
-        free(uname);
+        //free(uname); // 由 tourney_new 保存
         goto end;
     }
 
@@ -403,11 +428,18 @@ end:
 static int
 mp_init_scb(char* word[], char* word_eol[], void* userdata)
 {
-    if (strcmp(word[2], "QUIT") != 0)
-        utf8_print(word_eol[1]);
-
-    if (indexof_str(word_eol[4], "!mp init") == -1)
+    tourney_t* t = GET_TOURNEY(word[3]);
+    // 需要判断频道是否存在，并确保是比赛房间
+    if (indexof_str(word_eol[4], "!mp init") == -1 || t == NULL)
         goto end;
+
+    char* uname = GET_UNAME(word[1]);
+    // 
+    if (is_staff(uname) > 0)
+    {
+
+    }
+    free(uname);
 
 end:
     return HEXCHAT_EAT_NONE;
@@ -533,7 +565,7 @@ hexchat_plugin_init(hexchat_plugin* plugin_handle,
     utf8_hook_server("PRIVMSG", HEXCHAT_PRI_NORM, y_scb, NULL);
     utf8_hook_server("PRIVMSG", HEXCHAT_PRI_NORM, x_scb, NULL);
     utf8_hook_server("PRIVMSG", HEXCHAT_PRI_NORM, mp_make_scb, NULL);
-    utf8_hook_server("RAW LINE", HEXCHAT_PRI_NORM, mp_init_scb, NULL);
+    utf8_hook_server("PRIVMSG", HEXCHAT_PRI_NORM, mp_init_scb, NULL);
 
     hexchat_printf(ph, "%s loaded successfully!\n", PNAME);
     return 1;       /* return 1 for success */

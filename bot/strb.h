@@ -1,9 +1,9 @@
 #ifndef STRB_H
 #define STRB_H
 
-#include <stdlib.h>
 #include <stddef.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #define STR_SIZEOF(len) ((len) * sizeof(char))
 #define STR_MALLOC(len) ( \
@@ -64,5 +64,7 @@ int indexof_str(const char* str1, const char* str2);
 int last_indexof_char(const char* str, int c);
 
 char* substr(const char* str, int beginIndex, int endIndex);
+
+char* newstr(const char* str);
 
 #endif
