@@ -7,17 +7,31 @@
 #include "hexchat-plugin.h"
 #include "strb.h"
 #include "wcsb.h"
-#include "tournament.h"
 #include "hashmap.h"
 
 #define PNAME "OSU!Referee"
 #define PDESC "Simple Edition Automated Referee"
 #define PVERSION "0.1"
 
+/**
+* https://hexchat.readthedocs.io/en/latest/plugins.html#what-s-word-and-word-eol
+*
+* These arrays are simply provided for your convenience.
+* You are not allowed to alter them.
+* Both arrays are limited to 32 elements (index 31).
+* word[0] and word_eol[0] are reserved and should not be read.
+*/
 #define WORD_LIMIT 32
+#define CHAR_MAX 0xff
+#define PVER_KEY "_pVersion"
+#define BANCHOBOT "BanchoBot"
+#define DEFAULT_ROOM_NAME "OSAR: (Blue Team) vs (Red Team)"
 
-static hexchat_plugin * ph;      /* plugin handle */
-static int enable = 1;
+#define ARR_LEN(a) (sizeof(a) / sizeof(*a))
+#define GET_UNAME(prefix) ( \
+    substr(prefix, 1, indexof_char(prefix, '!')) \
+)
+#define IS_BOT(uname) (hexchat_nickcmp(ph, cfg.bot, uname) == 0)
 
 typedef int (*hook_callback) (char* word[], char* word_eol[], void* user_data);
 
@@ -26,6 +40,31 @@ typedef struct
     void* userdata;
     hook_callback func;
 } userdata_t;
+
+typedef struct
+{
+    char staff[CHAR_MAX];
+    char set[CHAR_MAX];
+    char password[CHAR_MAX];
+    char sleep[CHAR_MAX];
+
+    char bot[CHAR_MAX];         // 用于存放bot用户
+    char* staff2;
+} referee_ini_t;
+
+typedef struct
+{
+    char* acronym;              // 比赛缩写
+    char* blue_team;
+    char* red_team;
+} tourney_t;
+
+static hexchat_plugin* ph;      /* plugin handle */
+static int enable = 1;
+static char* attrs[] = { "staff","set","password","sleep" };
+static char* attrs_default_value[] = { "","2 0 16","998","300" };
+static referee_ini_t cfg;
+static hashmap_t* matches;
 
 static void utf8_command(const char* cmd);
 static void utf8_commandf(const char* format, ...);
@@ -83,34 +122,6 @@ _param_from_utf8(char* word[], char* word_eol[], void* userdata)
 
     return eat;
 }
-
-//-------------------------------------------------------------------------------
-
-#define CHAR_MAX 0xff
-#define PVER_KEY "_pVersion"
-#define BANCHOBOT "BanchoBot"
-#define DEFAULT_ROOM_NAME "OSAR: (Blue Team) vs (Red Team)"
-
-#define ARR_LEN(a) (sizeof(a) / sizeof(*a))
-#define GET_UNAME(prefix) ( \
-    substr(prefix, 1, indexof_char(prefix, '!')) \
-)
-#define IS_BOT(uname) (hexchat_nickcmp(ph, cfg.bot, uname) == 0)
-
-typedef struct
-{
-    char staff[CHAR_MAX];
-    char set[CHAR_MAX];
-    char password[CHAR_MAX];
-    char sleep[CHAR_MAX];
-
-    char bot[CHAR_MAX];         // 用于存放bot用户
-    char* staff2;
-} referee_ini_t;
-
-static char* attrs[] = { "staff","set","password","sleep" };
-static char* attrs_default_value[] = { "","2 0 16","998","300" };
-static referee_ini_t cfg;
 
 /**
 * 判断 uname 是否为staff
@@ -174,6 +185,37 @@ static void reload_cfg()
         cfg.staff2 = &cfg.staff;
     else
         cfg.staff2 = &cfg.bot;
+}
+
+static void tourney_free(void* data)
+{
+    if (data == NULL)
+        return;
+
+    tourney_t* t = (tourney_t*)data;
+    free(t->acronym);
+    free(t->blue_team);
+    free(t->red_team);
+
+    t = NULL;
+    free(data);
+}
+
+static tourney_t* tourney_new(char* channel, char* name)
+{
+    if (matches == NULL)
+        matches = hashmap_new(tourney_free);
+
+    tourney_t* t = (tourney_t*)malloc(sizeof(tourney_t));
+    if (t == NULL)
+        return NULL;
+
+    t->acronym = substr(name, 0, indexof_char(name, ':'));
+    t->blue_team = substr(name, indexof_char(name, '(') + 1, indexof_char(name, ')'));
+    t->red_team = substr(name, last_indexof_char(name, '(') + 1, last_indexof_char(name, ')'));
+
+    hashmap_put(matches, channel, t);
+    return t;
 }
 
 // hook command
@@ -419,6 +461,7 @@ utf8_hook_command(const char* name,
     hexchat_hook* hook = hexchat_hook_command(ph, name, pri, _param_from_utf8, help_text_utf8, data);
     g_free(help_text_utf8);
 
+    //free(data); // 不释放是因为回调函数的存在
     return hook;
 }
 
@@ -439,9 +482,9 @@ static void*
 utf8_unhook(hexchat_hook* hook)
 {
     userdata_t* data = (userdata_t*)hexchat_unhook(ph, hook);
+
     void* userdata = data->userdata;
     free(data);
-
     return userdata;
 }
 
