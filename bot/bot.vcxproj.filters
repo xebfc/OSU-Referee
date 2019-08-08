@@ -27,6 +27,12 @@
     <ClCompile Include="hashmap.c">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="shell.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="sqlite3.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="bot.def">
@@ -41,6 +47,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="hashmap.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="sqlite3.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="sqlite3ext.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

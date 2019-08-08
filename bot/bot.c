@@ -3,12 +3,12 @@
 #include <string.h>
 #include <glib.h>
 #include <gmodule.h>
-#include <stdint.h>
 
 #include "hexchat-plugin.h"
 #include "strb.h"
 #include "wcsb.h"
 #include "hashmap.h"
+#include "sqlite3.h"
 
 #define PNAME "OSU!Referee"
 #define PDESC "Simple Edition Automated Referee"
@@ -64,8 +64,8 @@ typedef struct
     char* room_name;            // 房间名
     char* creator;              // 创建者
 
-    uint8_t bo;
-    uint16_t wait;
+    sqlite3_uint64 bo;
+    sqlite3_uint64 wait;
 } tourney_t;
 
 static hexchat_plugin* ph;      /* plugin handle */
@@ -132,37 +132,6 @@ _param_from_utf8(char* word[], char* word_eol[], void* userdata)
     return eat;
 }
 
-/**
-* 判断 uname 是否为staff
-* 由于bot本身需要登录一个用户，因此bot用户自带staff权限
-* 默认情况下当返回值大于0时则判断该用户为staff
-* staff用户需要在referee.ini文件中进行配置
-*
-* @param uanme 用户名
-* @return 0：非staff用户 1：bot用户 2：staff用户
-*/
-static int is_staff(uname)
-{
-    if (IS_BOT(uname))
-        return 1;
-    else if (cfg.staff != NULL)
-    {
-        char staff[CHAR_MAX];
-        strcpy(staff, cfg.staff); // strtok 会改变 staff 的值，strcpy 保证了原字符串的完整性
-
-        char* s = strtok(staff, ",");
-        while (s != NULL)
-        {
-            if (hexchat_nickcmp(ph, s, uname) == 0)
-                return 2;
-
-            s = strtok(NULL, ",");
-        }
-    }
-
-    return 0;
-}
-
 static void init_cfg()
 {
     char* pver[CHAR_MAX];
@@ -194,6 +163,37 @@ static void reload_cfg()
         cfg.staff2 = &cfg.staff;
     else
         cfg.staff2 = &cfg.bot;
+}
+
+/**
+* 判断 uname 是否为staff
+* 由于bot本身需要登录一个用户，因此bot用户自带staff权限
+* 默认情况下当返回值大于0时则判断该用户为staff
+* staff用户需要在referee.ini文件中进行配置
+*
+* @param uanme 用户名
+* @return 0：非staff用户 1：bot用户 2：staff用户
+*/
+static int is_staff(uname)
+{
+    if (IS_BOT(uname))
+        return 1;
+    else if (cfg.staff != NULL)
+    {
+        char staff[CHAR_MAX];
+        strcpy(staff, cfg.staff); // strtok 会改变 staff 的值，strcpy 保证了原字符串的完整性
+
+        char* s = strtok(staff, ",");
+        while (s != NULL)
+        {
+            if (hexchat_nickcmp(ph, s, uname) == 0)
+                return 2;
+
+            s = strtok(NULL, ",");
+        }
+    }
+
+    return 0;
 }
 
 static void tourney_free(void* data)
