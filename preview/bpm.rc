@@ -1,34 +1,98 @@
-#include "windows.h"
+// Microsoft Visual C++ generated resource script.
+//
 #include "bpm.h"
 
-1000 DIALOG DISCARDABLE  0, 0, 175, 206
-STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include <windows.h>
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// 中文(简体，中国) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+#pragma code_page(936)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+1000 DIALOG 0, 0, 175, 206
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "BASS_FX bpm with tempo & rate"
 FONT 8, "MS Sans Serif"
 BEGIN
-    PUSHBUTTON      "click here to open a file && play it...",ID_OPEN,0,0,
-                    175,20
+    PUSHBUTTON      "click here to open a file && play it...",ID_OPEN,0,0,175,20
     CTEXT           "Volume",IDC_STATIC,140,30,24,8
     CTEXT           "Tempo = 0%",IDC_STEMPO,5,30,125,8
     CTEXT           "Playing position: 00:00 / 00:00",IDC_SPOS,35,175,97,8
-    CONTROL         "Slider1",IDC_VOL,"msctls_trackbar32",TBS_AUTOTICKS | 
-                    TBS_VERT | TBS_BOTH | WS_TABSTOP,140,40,30,145
-    CONTROL         "Slider1",IDC_POS,"msctls_trackbar32",TBS_NOTICKS | 
-                    WS_TABSTOP,5,185,165,15
-    CONTROL         "Slider2",IDC_TEMPO,"msctls_trackbar32",TBS_AUTOTICKS | 
-                    TBS_BOTH | WS_TABSTOP,5,40,130,25
-    CONTROL         "Slider2",IDC_RATE,"msctls_trackbar32",TBS_NOTICKS | 
-                    WS_TABSTOP,5,85,130,15
+    CONTROL         "Slider1",IDC_VOL,"msctls_trackbar32",TBS_AUTOTICKS | TBS_VERT | TBS_BOTH | WS_TABSTOP,140,40,30,145
+    CONTROL         "Slider1",IDC_POS,"msctls_trackbar32",TBS_NOTICKS | WS_TABSTOP,5,185,165,15
+    CONTROL         "Slider2",IDC_TEMPO,"msctls_trackbar32",TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,5,40,130,25
+    CONTROL         "Slider2",IDC_RATE,"msctls_trackbar32",TBS_NOTICKS | WS_TABSTOP,5,85,130,15
     CTEXT           "Samplerate = 44100Hz",IDC_SRATE,10,70,125,8
     LTEXT           "BPM: 0.00",IDC_SBPM,5,107,53,8
-    CONTROL         "BPM by period of seconds:",IDC_CHKPERIOD,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,5,135,95,10
+    CONTROL         "BPM by period of seconds:",IDC_CHKPERIOD,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,5,135,95,10
     EDITTEXT        IDC_EPBPM,104,133,30,12,ES_CENTER | ES_NUMBER
-    LTEXT           "Detection progress of a decoding BPM:",IDC_STATIC,10,150,
-                    123,8
-    CONTROL         "Progress1",IDC_PRGRSBPM,"msctls_progress32",WS_BORDER,5,
-                    160,130,10
+    LTEXT           "Detection progress of a decoding BPM:",IDC_STATIC,10,150,123,8
+    CONTROL         "Progress1",IDC_PRGRSBPM,"msctls_progress32",WS_BORDER,5,160,130,10
     LTEXT           "Beat pos: 0.00",IDC_SBEAT,63,107,71,8
-    CONTROL         "Enable / Disable showing Beat pos",IDC_CHKBEAT,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,5,121,126,10
+    CONTROL         "Enable / Disable showing Beat pos",IDC_CHKBEAT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,5,121,126,10
 END
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "bpm.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include <windows.h>\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// WAVE
+//
+
+IDR_WAVE1               WAVE                    "bass-dry.wav"
+
+IDR_WAVE2               WAVE                    "clap1.wav"
+
+#endif    // 中文(简体，中国) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

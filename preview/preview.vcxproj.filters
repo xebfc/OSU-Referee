@@ -35,4 +35,12 @@
       <Filter>资源文件</Filter>
     </ResourceCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Media Include="bass-dry.wav">
+      <Filter>资源文件</Filter>
+    </Media>
+    <Media Include="clap1.wav">
+      <Filter>资源文件</Filter>
+    </Media>
+  </ItemGroup>
 </Project>
