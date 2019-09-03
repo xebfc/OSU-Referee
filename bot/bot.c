@@ -10,8 +10,8 @@
 #include "hashmap.h"
 #include "sqlite3.h"
 
-#define PNAME "OSU!Referee"
-#define PDESC "Simple Edition Automated Referee"
+#define PNAME "OSU-Referee"
+#define PDESC "Simple version of automated OSU referee robot based on HexChat plugin"
 #define PVERSION "0.1"
 
 /**
@@ -26,7 +26,7 @@
 #define CHAR_MAX 0xff
 #define PVER_KEY "_pVersion"
 #define BANCHOBOT "BanchoBot"
-#define DEFAULT_ROOM_NAME "OSAR: (Blue Team) vs (Red Team)"
+#define DEFAULT_ROOM_NAME "OR: (Blue Team) vs (Red Team)"
 
 #define ARR_LEN(a) (sizeof(a) / sizeof(*a))
 #define GET_UNAME(prefix) ( \
@@ -70,8 +70,8 @@ typedef struct
 
 static hexchat_plugin* ph;      /* plugin handle */
 static int enable = 1;
-static char* attrs[] = { "staff","set","password","sleep" };
-static char* attrs_default_value[] = { "","2 0 16","998","300" };
+static char* attrs[] = { "staff","set","password","sleep","wait" };
+static char* attrs_default_value[] = { "","2 0 16","998","300","0" };
 static referee_ini_t cfg;
 static hashmap_t* matches;
 

@@ -66,14 +66,14 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <TargetName>osu-referee</TargetName>
+    <TargetName>OSU-Referee</TargetName>
     <OutDir>$(HexChatRel)config\addons\</OutDir>
     <IntDir>$(HexChatObj)..\osu\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(HexChatRel)config\addons\</OutDir>
-    <TargetName>osu-referee</TargetName>
+    <TargetName>OSU-Referee</TargetName>
     <IntDir>$(HexChatObj)..\osu\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
