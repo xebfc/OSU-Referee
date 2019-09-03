@@ -121,6 +121,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "osu", "osu", "{BD9E0C10-DD9
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bot", "..\..\bot\bot.vcxproj", "{B5531369-671C-4387-8D2C-5FD6992290C1}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "preview", "..\..\preview\preview.vcxproj", "{D6AA2FD0-3F89-4180-9FEE-53D7A0F65FC9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Release|Win32 = Release|Win32
@@ -206,6 +208,10 @@ Global
 		{B5531369-671C-4387-8D2C-5FD6992290C1}.Release|Win32.Build.0 = Release|Win32
 		{B5531369-671C-4387-8D2C-5FD6992290C1}.Release|x64.ActiveCfg = Release|x64
 		{B5531369-671C-4387-8D2C-5FD6992290C1}.Release|x64.Build.0 = Release|x64
+		{D6AA2FD0-3F89-4180-9FEE-53D7A0F65FC9}.Release|Win32.ActiveCfg = Release|Win32
+		{D6AA2FD0-3F89-4180-9FEE-53D7A0F65FC9}.Release|Win32.Build.0 = Release|Win32
+		{D6AA2FD0-3F89-4180-9FEE-53D7A0F65FC9}.Release|x64.ActiveCfg = Release|x64
+		{D6AA2FD0-3F89-4180-9FEE-53D7A0F65FC9}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -231,6 +237,7 @@ Global
 		{BF0EBC16-68AD-4CD1-864C-5B56836EBE2A} = {021EC1D0-FF67-4700-9AB2-EAABF1159C09}
 		{4C0F3940-2EEE-4646-82F7-6CE75B9A72F4} = {D237DA6B-BD5F-46C0-8BEA-50E9A1340240}
 		{B5531369-671C-4387-8D2C-5FD6992290C1} = {BD9E0C10-DD95-41ED-8239-45A8CD240A5F}
+		{D6AA2FD0-3F89-4180-9FEE-53D7A0F65FC9} = {BD9E0C10-DD95-41ED-8239-45A8CD240A5F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0D12A6B8-19FB-42F0-97C1-1B43A1A45B3E}
