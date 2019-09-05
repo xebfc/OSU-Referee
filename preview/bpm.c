@@ -27,11 +27,20 @@ BASS_CHANNELINFO info;
 /**
 * 在对话框中将消息发送到指定的控件
 *
-* id 接收消息的控件的标识符
-* m 要发送的消息
-* w,l 其他特定于消息的信息
+* @param id 接收消息的控件的标识符
+* @param m 要发送的消息
+* @param w,l 其他特定于消息的信息
+* @return 返回值指定消息处理的结果，并取决于发送的消息。
 */
 #define MESS(id,m,w,l) SendDlgItemMessage(win,id,m,(WPARAM)w,(LPARAM)l)
+
+/**
+* 检索指定控件的标识符
+*
+* @param l 控件的句柄
+* @return 如果函数成功，则返回值是控件的标识符。如果函数失败，则返回值为零。
+*/
+#define CTRLID(l) GetDlgCtrlID((HWND)l)
 
 OPENFILENAME ofn;
 char path[MAX_PATH];
@@ -252,17 +261,18 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
         }
         break;
 
+    // 垂直滚动条消息
     case WM_VSCROLL:
-        if (GetDlgCtrlID((HWND)l) == IDC_VOL)
+        if (CTRLID(l) == IDC_VOL)
             BASS_ChannelSetAttribute(chan, BASS_ATTRIB_VOL, (float)(100 - MESS(IDC_VOL, TBM_GETPOS, 0, 0)) / 100.0f);
         break;
 
-    // 
+    // 水平滚动条消息
     case WM_HSCROLL:
     {
         if (!BASS_ChannelIsActive(chan)) break;
 
-        switch (GetDlgCtrlID((HWND)l)) {
+        switch (CTRLID(l)) {
         case IDC_TEMPO:
             // set new tempo
             p = MESS(IDC_TEMPO, TBM_GETPOS, 0, 0);

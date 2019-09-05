@@ -1,6 +1,7 @@
 hexchat-build/
 .vs
 *.exe
+*.user
 
 # Prerequisites
 #*.d
