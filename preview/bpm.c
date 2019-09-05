@@ -24,6 +24,13 @@ DWORD bpmChan;			// decoding channel handle for BPM detection
 float bpmValue;			// bpm value returned by BASS_FX_BPM_DecodeGet/GetBPM_Callback functions
 BASS_CHANNELINFO info;
 
+/**
+* 在对话框中将消息发送到指定的控件
+*
+* id 接收消息的控件的标识符
+* m 要发送的消息
+* w,l 其他特定于消息的信息
+*/
 #define MESS(id,m,w,l) SendDlgItemMessage(win,id,m,(WPARAM)w,(LPARAM)l)
 
 OPENFILENAME ofn;
@@ -125,6 +132,13 @@ char* GetFileName(const char* fp)
     return (strrev(fp) + strlen(fp) - slash_location);
 }
 
+/**
+* WindowProc 窗口过程
+*
+* h 窗口句柄
+* m 消息代码
+* w,l 包含与消息有关的其他数据。确切含义取决于消息代码
+*/
 BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
 {
     DWORD p = 0;
@@ -243,6 +257,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
             BASS_ChannelSetAttribute(chan, BASS_ATTRIB_VOL, (float)(100 - MESS(IDC_VOL, TBM_GETPOS, 0, 0)) / 100.0f);
         break;
 
+    // 
     case WM_HSCROLL:
     {
         if (!BASS_ChannelIsActive(chan)) break;
@@ -296,7 +311,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
     case WM_CLOSE:
         EndDialog(h, 0);
         return 1;
-        break;
+        //break;
 
     case WM_INITDIALOG:
         win = h;
@@ -309,9 +324,9 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
         ofn.Flags = OFN_HIDEREADONLY | OFN_EXPLORER;
 
         // setup output - default device, 44100hz, stereo, 16 bits
-        if (!BASS_Init(-1, 44100, 0, win, NULL)) {
+        if (!BASS_Init(-1, 44100, 0, h, NULL)) {
             Error("Can't initialize device");
-            DestroyWindow(win);
+            DestroyWindow(h);
             return 1;
         }
 
@@ -349,6 +364,14 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
     return 0;
 }
 
+/**
+* 用户提供的基于Windows的图形应用程序的入口点
+*
+* hInstance 应用程序当前实例的句柄
+* hPrevInstance 上一个应用程序实例的句柄
+* lpCmdLine 应用程序的命令行，不包括程序名称
+* nCmdShow TBD
+*/
 int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     inst = hInstance;
@@ -365,6 +388,8 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return 1;
     }
 
+    // 它的作用是从一个对话框资源中创建一个模态对话框。
+    // 该函数直到指定的回调函数通过调用EndDialog函数中止模态的对话框才能返回控制。
     DialogBox(inst, (char*)1000, 0, &dialogproc);
 
     BASS_Free();

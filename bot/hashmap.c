@@ -175,9 +175,10 @@ hashmap_t* hashmap_new(destroy_t val_destroy_func)
     map->val_destroy_func = val_destroy_func;
 
     // ÔàÖµ´¦Àí
-    int i = DEFAULT_INITIAL_CAPACITY;
-    while (i-- > 0)
-        *(map->list + i) = NULL;
+    //int i = DEFAULT_INITIAL_CAPACITY;
+    //while (i-- > 0)
+    //    *(map->list + i) = NULL;
+    memset(map->list, NULL, DEFAULT_INITIAL_CAPACITY);
 
     return map;
 
