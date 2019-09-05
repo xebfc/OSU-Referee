@@ -23,15 +23,15 @@ LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 // Dialog
 //
 
-1000 DIALOG 0, 0, 175, 206
+1000 DIALOGEX 0, 0, 175, 206
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "BASS_FX bpm with tempo & rate"
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     PUSHBUTTON      "click here to open a file && play it...",ID_OPEN,0,0,175,20
     CTEXT           "Volume",IDC_STATIC,140,30,24,8
     CTEXT           "Tempo = 0%",IDC_STEMPO,5,30,125,8
-    CTEXT           "Playing position: 00:00 / 00:00",IDC_SPOS,35,175,97,8
+    CTEXT           "00:00:000 / 00:00:000",IDC_SPOS,35,175,97,8
     CONTROL         "Slider1",IDC_VOL,"msctls_trackbar32",TBS_AUTOTICKS | TBS_VERT | TBS_BOTH | WS_TABSTOP,140,40,30,145
     CONTROL         "Slider1",IDC_POS,"msctls_trackbar32",TBS_NOTICKS | WS_TABSTOP,5,185,165,15
     CONTROL         "Slider2",IDC_TEMPO,"msctls_trackbar32",TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,5,40,130,25
@@ -79,6 +79,32 @@ END
 IDR_WAVE1               WAVE                    "bass-dry.wav"
 
 IDR_WAVE2               WAVE                    "clap1.wav"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    1000, DIALOG
+    BEGIN
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+1000 AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
 
 #endif    // 中文(简体，中国) resources
 /////////////////////////////////////////////////////////////////////////////

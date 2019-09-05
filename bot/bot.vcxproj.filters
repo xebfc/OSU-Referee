@@ -27,9 +27,6 @@
     <ClCompile Include="hashmap.c">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="shell.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="sqlite3.c">
       <Filter>源文件</Filter>
     </ClCompile>

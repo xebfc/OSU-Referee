@@ -43,7 +43,7 @@ BASS_CHANNELINFO info;
 #define CTRLID(l) GetDlgCtrlID((HWND)l)
 
 OPENFILENAME ofn;
-char path[MAX_PATH];
+//char path[MAX_PATH];
 
 // display error dialogs
 void Error(const char* es)
@@ -53,15 +53,27 @@ void Error(const char* es)
     MessageBox(win, mes, "Error", MB_ICONEXCLAMATION);
 }
 
-// show the approximate position in MM:SS format according to Tempo change
+// show the approximate position in [mm:ss:SSS] format according to Tempo change
 void UpdatePositionLabel()
 {
     if (!BASS_FX_TempoGetRateRatio(chan)) return;
     {
         char c[30];
+        /**
+        * TBM_GETRANGEMAX 消息
+        *
+        * 检索轨迹栏中滑块的最大位置。
+        *
+        * 参数：
+        * wParam,lParam 必须为零。
+        *
+        * 返回值：
+        * 返回一个32位值，指定轨迹栏中最小滑块位置到最大滑块位置的最大位置。
+        */
         float totalsec = (float)MESS(IDC_POS, TBM_GETRANGEMAX, 0, 0) / BASS_FX_TempoGetRateRatio(chan);
         float posec = (float)MESS(IDC_POS, TBM_GETPOS, 0, 0) / BASS_FX_TempoGetRateRatio(chan);
-        sprintf(c, "Playing position: %02d:%02d / %02d:%02d", (int)posec / 60, (int)posec % 60, (int)totalsec / 60, (int)totalsec % 60);
+        sprintf(c, "%02d:%02d:%03d / %02d:%02d:%03d", (int)posec / 60, (int)posec % 60, (int)posec * 1000 % 1000
+            , (int)totalsec / 60, (int)totalsec % 60, (int)totalsec * 1000 % 1000);
         MESS(IDC_SPOS, WM_SETTEXT, 0, c);
     }
 }
@@ -162,8 +174,8 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
             ofn.lpstrFilter = "playable files\0*.mo3;*.xm;*.mod;*.s3m;*.it;*.mtm;*.mp3;*.mp2;*.mp1;*.ogg;*.wav;*.aif\0All files\0*.*\0\0";
             ofn.lpstrFile = file;
             if (GetOpenFileName(&ofn)) {
-                memcpy(path, file, ofn.nFileOffset);
-                path[ofn.nFileOffset - 1] = 0;
+                //memcpy(path, file, ofn.nFileOffset);
+                //path[ofn.nFileOffset - 1] = 0;
 
                 // free decode bpm stream and resources
                 BASS_FX_BPM_Free(bpmChan);
@@ -261,16 +273,28 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
         }
         break;
 
-    // 垂直滚动条消息
+        // 垂直滚动条消息
     case WM_VSCROLL:
         if (CTRLID(l) == IDC_VOL)
+            /**
+            * TBM_GETPOS 消息
+            *
+            * 检索轨道栏中滑块的当前逻辑位置。逻辑位置是轨迹栏的最小滑块位置到最大滑块位置的整数值。
+            *
+            * 参数：
+            * wParam,lParam 必须为零。
+            *
+            * 返回值：
+            * 返回一个32位值，指定轨迹栏滑块的当前逻辑位置。
+            */
             BASS_ChannelSetAttribute(chan, BASS_ATTRIB_VOL, (float)(100 - MESS(IDC_VOL, TBM_GETPOS, 0, 0)) / 100.0f);
         break;
 
-    // 水平滚动条消息
+        // 水平滚动条消息
     case WM_HSCROLL:
     {
-        if (!BASS_ChannelIsActive(chan)) break;
+        //if (!BASS_ChannelIsActive(chan)) break;
+        if (BASS_ChannelIsActive(chan) == BASS_ACTIVE_STOPPED) break;
 
         switch (CTRLID(l)) {
         case IDC_TEMPO:
@@ -308,7 +332,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                     double pos = (double)MESS(IDC_POS, TBM_GETPOS, 0, 0);
                     double maxpos = (double)MESS(IDC_POS, TBM_GETRANGEMAX, 0, 0);
                     double period = atof(c);
-                    DecodingBPM(FALSE, pos, (pos + period) >= maxpos ? maxpos - 1 : pos + period, "");
+                    DecodingBPM(FALSE, pos, (pos + period) >= maxpos ? maxpos : pos + period, "");
                 }
             }
             // update the approximate time in seconds view
@@ -325,7 +349,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
 
     case WM_INITDIALOG:
         win = h;
-        GetCurrentDirectory(MAX_PATH, path);
+        //GetCurrentDirectory(MAX_PATH, path);
         memset(&ofn, 0, sizeof(ofn));
         ofn.lStructSize = sizeof(ofn);
         ofn.hwndOwner = h;
