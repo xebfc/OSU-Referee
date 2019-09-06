@@ -43,7 +43,7 @@ BASS_CHANNELINFO info;
 #define CTRLID(l) GetDlgCtrlID((HWND)l)
 
 OPENFILENAME ofn;
-//char path[MAX_PATH];
+char path[MAX_PATH];
 
 // display error dialogs
 void Error(const char* es)
@@ -106,6 +106,8 @@ void CALLBACK beatTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, D
         beatpos = BASS_ChannelBytes2Seconds(dwUser, BASS_ChannelGetPosition(dwUser, BASS_POS_BYTE)) / BASS_FX_TempoGetRateRatio(dwUser);
         sprintf(c, "Beat pos: %0.2f", beatpos);
         MESS(IDC_SBEAT, WM_SETTEXT, 0, c);
+        //MESS(IDC_POS, TBM_SETPOS, TRUE, beatpos);
+        //UpdatePositionLabel();
     }
     timeKillEvent(uTimerID);
 }
@@ -116,6 +118,9 @@ void CALLBACK GetBeatPos_Callback(DWORD handle, double beatpos, void* user)
     double curpos;
     curpos = BASS_ChannelBytes2Seconds(handle, BASS_ChannelGetPosition(handle, BASS_POS_BYTE));
     timeSetEvent((UINT)((beatpos - curpos) * 1000.0f), 0, (LPTIMECALLBACK)beatTimerProc, handle, TIME_ONESHOT);
+
+    MESS(IDC_POS, TBM_SETPOS, TRUE, curpos);
+    UpdatePositionLabel();
 }
 
 // get bpm detection progress in percents (called by BASS_FX_BPM_DecodeGet function)
@@ -172,10 +177,18 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
         {
             char file[MAX_PATH] = "";
             ofn.lpstrFilter = "playable files\0*.mo3;*.xm;*.mod;*.s3m;*.it;*.mtm;*.mp3;*.mp2;*.mp1;*.ogg;*.wav;*.aif\0All files\0*.*\0\0";
+            //ofn.lpstrFilter = "beatmaps (*.osu)\0*.osu";
             ofn.lpstrFile = file;
             if (GetOpenFileName(&ofn)) {
-                //memcpy(path, file, ofn.nFileOffset);
-                //path[ofn.nFileOffset - 1] = 0;
+                memcpy(path, file, ofn.nFileOffset);
+                path[ofn.nFileOffset - 1] = 0;
+
+                // update the button to show the loaded file name (without path)
+                MESS(ID_OPEN, WM_SETTEXT, 0, GetFileName(file));
+
+                // update tempo slider & view
+                MESS(IDC_TEMPO, TBM_SETPOS, TRUE, 0);
+                MESS(IDC_STEMPO, WM_SETTEXT, 0, "Tempo = 0%");
 
                 // free decode bpm stream and resources
                 BASS_FX_BPM_Free(bpmChan);
@@ -197,6 +210,16 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                 // get channel info
                 BASS_ChannelGetInfo(chan, &info);
 
+                // set rate min/max values according to current frequency
+                MESS(IDC_RATE, TBM_SETRANGEMAX, 0, (long)((float)info.freq * 1.5f));	// by +50%
+                MESS(IDC_RATE, TBM_SETRANGEMIN, 0, (long)((float)info.freq * 0.75f));	// by -25%
+                MESS(IDC_RATE, TBM_SETPOS, TRUE, (long)info.freq);
+                MESS(IDC_RATE, TBM_SETPAGESIZE, 0, (long)((float)info.freq * 0.01f));	// by 1%
+
+                // update rate view
+                sprintf(c, "Samplerate = %dHz", (long)info.freq);
+                MESS(IDC_SRATE, WM_SETTEXT, 0, c);
+
                 // set max length to position slider
                 p = (DWORD)BASS_ChannelBytes2Seconds(chan, BASS_ChannelGetLength(chan, BASS_POS_BYTE));
                 MESS(IDC_POS, TBM_SETRANGEMAX, 0, p);
@@ -211,29 +234,12 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                     break;
                 }
 
-                // update the button to show the loaded file name (without path)
-                MESS(ID_OPEN, WM_SETTEXT, 0, GetFileName(file));
+                // update the approximate time in seconds view
+                UpdatePositionLabel();
 
                 // set Volume
                 p = MESS(IDC_VOL, TBM_GETPOS, 0, 0);
                 BASS_ChannelSetAttribute(chan, BASS_ATTRIB_VOL, (float)(100 - p) / 100.0f);
-
-                // set rate min/max values according to current frequency
-                MESS(IDC_RATE, TBM_SETRANGEMAX, 0, (long)((float)info.freq * 1.5f));	// by +50%
-                MESS(IDC_RATE, TBM_SETRANGEMIN, 0, (long)((float)info.freq * 0.75f));	// by -25%
-                MESS(IDC_RATE, TBM_SETPOS, TRUE, (long)info.freq);
-                MESS(IDC_RATE, TBM_SETPAGESIZE, 0, (long)((float)info.freq * 0.01f));	// by 1%
-
-                // update rate view
-                sprintf(c, "Samplerate = %dHz", (long)info.freq);
-                MESS(IDC_SRATE, WM_SETTEXT, 0, c);
-
-                // update tempo slider & view
-                MESS(IDC_TEMPO, TBM_SETPOS, TRUE, 0);
-                MESS(IDC_STEMPO, WM_SETTEXT, 0, "Tempo = 0%");
-
-                // update the approximate time in seconds view
-                UpdatePositionLabel();
 
                 // set the callback bpm and beat
                 SendMessage(win, WM_COMMAND, IDC_CHKPERIOD, l);
@@ -245,10 +251,10 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                 // create bpmChan stream and get bpm value for IDC_EPBPM seconds from current position
                 GetDlgItemText(win, IDC_EPBPM, c, 5);
                 {
-                    double pos = (double)MESS(IDC_POS, TBM_GETPOS, 0, 0);
-                    double maxpos = (double)MESS(IDC_POS, TBM_GETRANGEMAX, 0, 0);
+                    //double pos = (double)MESS(IDC_POS, TBM_GETPOS, 0, 0);
+                    //double maxpos = (double)MESS(IDC_POS, TBM_GETRANGEMAX, 0, 0);
                     double period = atof(c);
-                    DecodingBPM(TRUE, pos, (pos + period) >= maxpos ? maxpos - 1 : pos + period, file);
+                    DecodingBPM(TRUE, 0, period, file);
                 }
             }
         }
