@@ -106,8 +106,6 @@ void CALLBACK beatTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, D
         beatpos = BASS_ChannelBytes2Seconds(dwUser, BASS_ChannelGetPosition(dwUser, BASS_POS_BYTE)) / BASS_FX_TempoGetRateRatio(dwUser);
         sprintf(c, "Beat pos: %0.2f", beatpos);
         MESS(IDC_SBEAT, WM_SETTEXT, 0, c);
-        //MESS(IDC_POS, TBM_SETPOS, TRUE, beatpos);
-        //UpdatePositionLabel();
     }
     timeKillEvent(uTimerID);
 }
@@ -118,9 +116,6 @@ void CALLBACK GetBeatPos_Callback(DWORD handle, double beatpos, void* user)
     double curpos;
     curpos = BASS_ChannelBytes2Seconds(handle, BASS_ChannelGetPosition(handle, BASS_POS_BYTE));
     timeSetEvent((UINT)((beatpos - curpos) * 1000.0f), 0, (LPTIMECALLBACK)beatTimerProc, handle, TIME_ONESHOT);
-
-    MESS(IDC_POS, TBM_SETPOS, TRUE, curpos);
-    UpdatePositionLabel();
 }
 
 // get bpm detection progress in percents (called by BASS_FX_BPM_DecodeGet function)
