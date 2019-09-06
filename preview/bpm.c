@@ -24,6 +24,13 @@ DWORD bpmChan;			// decoding channel handle for BPM detection
 float bpmValue;			// bpm value returned by BASS_FX_BPM_DecodeGet/GetBPM_Callback functions
 BASS_CHANNELINFO info;
 
+MMRESULT pt;            // everyFrame timer
+double songTime;        // 当前播放位置，单位：秒
+double lastReportedPlayheadPosition;
+LARGE_INTEGER Frequency;
+LARGE_INTEGER previousFrameTime;
+double Length;          // 歌曲总长度
+
 /**
 * 在对话框中将消息发送到指定的控件
 *
@@ -70,10 +77,10 @@ void UpdatePositionLabel()
         * 返回值：
         * 返回一个32位值，指定轨迹栏中最小滑块位置到最大滑块位置的最大位置。
         */
-        float totalsec = (float)MESS(IDC_POS, TBM_GETRANGEMAX, 0, 0) / BASS_FX_TempoGetRateRatio(chan);
-        float posec = (float)MESS(IDC_POS, TBM_GETPOS, 0, 0) / BASS_FX_TempoGetRateRatio(chan);
-        sprintf(c, "%02d:%02d:%03d / %02d:%02d:%03d", (int)posec / 60, (int)posec % 60, (int)posec * 1000 % 1000
-            , (int)totalsec / 60, (int)totalsec % 60, (int)totalsec * 1000 % 1000);
+        double totalsec = Length / BASS_FX_TempoGetRateRatio(chan);
+        double posec = songTime / BASS_FX_TempoGetRateRatio(chan);
+        sprintf(c, "%02d:%02d:%03d / %02d:%02d:%03d", (int)posec / 60, (int)posec % 60, (int)(posec * 1000) % 1000
+            , (int)totalsec / 60, (int)totalsec % 60, (int)(totalsec * 1000) % 1000);
         MESS(IDC_SPOS, WM_SETTEXT, 0, c);
     }
 }
@@ -154,6 +161,50 @@ char* GetFileName(const char* fp)
 }
 
 /**
+* LPTIMECALLBACK 函数指针
+*
+* timeSetEvent函数的应用程序定义的回调函数。
+*
+* 参数:
+* uTimerID 计时器的标识符。标识符由timeSetEvent函数返回。
+* uMsg 保留。
+* dwUser 为timeSetEvent函数的dwUser参数指定的值。
+* dw1 保留。
+* dw2 保留。
+*
+* 返回值：
+* 此函数指针不返回值。
+*/
+void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
+{
+    if (songTime == 0)
+    {
+        lastReportedPlayheadPosition = 0;
+        BASS_ChannelPlay(chan, FALSE);
+    }
+
+    LARGE_INTEGER newFrameTime;
+    QueryPerformanceCounter(&newFrameTime);
+    songTime += (newFrameTime.QuadPart - previousFrameTime.QuadPart) * 1.0 / Frequency.QuadPart;
+    QueryPerformanceCounter(&previousFrameTime);
+
+    if (songTime >= 0)
+    {
+        double newPosition;
+        newPosition = BASS_ChannelBytes2Seconds(chan, BASS_ChannelGetPosition(chan, BASS_POS_BYTE));
+        if (newPosition != lastReportedPlayheadPosition)
+        {
+            songTime = (songTime + newPosition) / 2.0;
+            lastReportedPlayheadPosition = newPosition;
+        }
+    }
+
+    if ((int)(songTime * 1000) % 1000 == 0)
+        MESS(IDC_POS, TBM_SETPOS, TRUE, songTime);
+    UpdatePositionLabel();
+}
+
+/**
 * WindowProc 窗口过程
 *
 * h 窗口句柄
@@ -177,6 +228,9 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
             if (GetOpenFileName(&ofn)) {
                 memcpy(path, file, ofn.nFileOffset);
                 path[ofn.nFileOffset - 1] = 0;
+
+                timeKillEvent(pt);
+                songTime = 0;
 
                 // update the button to show the loaded file name (without path)
                 MESS(ID_OPEN, WM_SETTEXT, 0, GetFileName(file));
@@ -216,8 +270,8 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                 MESS(IDC_SRATE, WM_SETTEXT, 0, c);
 
                 // set max length to position slider
-                p = (DWORD)BASS_ChannelBytes2Seconds(chan, BASS_ChannelGetLength(chan, BASS_POS_BYTE));
-                MESS(IDC_POS, TBM_SETRANGEMAX, 0, p);
+                Length = BASS_ChannelBytes2Seconds(chan, BASS_ChannelGetLength(chan, BASS_POS_BYTE));
+                MESS(IDC_POS, TBM_SETRANGEMAX, 0, Length);
                 MESS(IDC_POS, TBM_SETPOS, TRUE, 0);
 
                 // create a new stream - decoded & resampled :)
@@ -241,7 +295,8 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                 SendMessage(win, WM_COMMAND, IDC_CHKBEAT, l);
 
                 // play new created stream
-                BASS_ChannelPlay(chan, FALSE);
+                //BASS_ChannelPlay(chan, FALSE);
+                pt = timeSetEvent(1, 0, playTimerProc, 0, TIME_PERIODIC);
 
                 // create bpmChan stream and get bpm value for IDC_EPBPM seconds from current position
                 GetDlgItemText(win, IDC_EPBPM, c, 5);
@@ -357,6 +412,10 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
         ofn.hInstance = inst;
         ofn.nMaxFile = MAX_PATH;
         ofn.Flags = OFN_HIDEREADONLY | OFN_EXPLORER;
+
+        // 检索性能计数器的频率。性能计数器的频率在系统引导时是固定的，并且在所有处理器中都是一致的。
+        // 因此，只需在应用程序初始化时查询频率，就可以缓存结果。
+        QueryPerformanceFrequency(&Frequency);
 
         // setup output - default device, 44100hz, stereo, 16 bits
         if (!BASS_Init(-1, 44100, 0, h, NULL)) {
