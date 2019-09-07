@@ -32,18 +32,18 @@ double lastReportedPlayheadPosition;
 stopwatch_t previousFrameTime;
 double Length;          // ¸èÇú×Ü³¤¶È
 
-#define MWFMO \
+#define MWFMO(hHandle) \
 { \
     DWORD dwRet; \
     MSG msg; \
     while (TRUE) \
     { \
-        dwRet = MsgWaitForMultipleObjects(1, &ghMutex, FALSE, INFINITE, QS_ALLINPUT); \
+        dwRet = MsgWaitForMultipleObjects(1, &hHandle, FALSE, INFINITE, QS_ALLINPUT); \
         switch (dwRet) { \
         case WAIT_OBJECT_0: \
             break; \
         case WAIT_OBJECT_0 + 1: \
-            PeekMessage(&msg, NULL, 0, 0, PM_REMOVE); \
+            PeekMessage(&msg, NULL, 0, 0, PM_REMOVE|PM_NOYIELD); \
             DispatchMessage(&msg); \
             continue; \
         default: \
@@ -184,7 +184,7 @@ char* GetFileName(const char* fp)
 
 void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void* user)
 {
-    MWFMO;
+    MWFMO(ghMutex);
 
     songTime = 0;
     lastReportedPlayheadPosition = 0;
@@ -210,7 +210,7 @@ void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void* user)
 */
 void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
 {
-    MWFMO;
+    MWFMO(ghMutex);
 
     if (songTime == 0)
         BASS_ChannelPlay(chan, FALSE);
