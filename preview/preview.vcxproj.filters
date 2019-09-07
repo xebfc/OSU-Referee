@@ -24,9 +24,15 @@
     <ClInclude Include="bass_fx.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="stopwatch.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="bpm.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="stopwatch.c">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

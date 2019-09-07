@@ -14,9 +14,11 @@
     <ClInclude Include="bass.h" />
     <ClInclude Include="bass_fx.h" />
     <ClInclude Include="bpm.h" />
+    <ClInclude Include="stopwatch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="bpm.c" />
+    <ClCompile Include="stopwatch.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="bpm.rc" />

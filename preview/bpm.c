@@ -13,6 +13,7 @@
 #include "bass.h"
 #include "bass_fx.h"
 #include "bpm.h"
+#include "stopwatch.h"
 
 HWND win = NULL;
 HINSTANCE inst;
@@ -25,11 +26,32 @@ float bpmValue;			// bpm value returned by BASS_FX_BPM_DecodeGet/GetBPM_Callback
 BASS_CHANNELINFO info;
 
 MMRESULT pt;            // everyFrame timer
+HANDLE ghMutex;
 double songTime;        // 当前播放位置，单位：秒
 double lastReportedPlayheadPosition;
-LARGE_INTEGER Frequency;
-LARGE_INTEGER previousFrameTime;
+stopwatch_t previousFrameTime;
 double Length;          // 歌曲总长度
+
+#define MWFMO \
+{ \
+    DWORD dwRet; \
+    MSG msg; \
+    while (TRUE) \
+    { \
+        dwRet = MsgWaitForMultipleObjects(1, &ghMutex, FALSE, INFINITE, QS_ALLINPUT); \
+        switch (dwRet) { \
+        case WAIT_OBJECT_0: \
+            break; \
+        case WAIT_OBJECT_0 + 1: \
+            PeekMessage(&msg, NULL, 0, 0, PM_REMOVE); \
+            DispatchMessage(&msg); \
+            continue; \
+        default: \
+            break; \
+        } \
+        break; \
+    } \
+}
 
 /**
 * 在对话框中将消息发送到指定的控件
@@ -160,6 +182,17 @@ char* GetFileName(const char* fp)
     return (strrev(fp) + strlen(fp) - slash_location);
 }
 
+void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void* user)
+{
+    MWFMO;
+
+    songTime = 0;
+    lastReportedPlayheadPosition = 0;
+    Stopwatch_Reset(previousFrameTime);
+
+    ReleaseMutex(ghMutex);
+}
+
 /**
 * LPTIMECALLBACK 函数指针
 *
@@ -177,16 +210,18 @@ char* GetFileName(const char* fp)
 */
 void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
 {
-    if (songTime == 0)
-    {
-        lastReportedPlayheadPosition = 0;
-        BASS_ChannelPlay(chan, FALSE);
-    }
+    MWFMO;
 
-    LARGE_INTEGER newFrameTime;
-    QueryPerformanceCounter(&newFrameTime);
-    songTime += (newFrameTime.QuadPart - previousFrameTime.QuadPart) * 1.0 / Frequency.QuadPart;
-    QueryPerformanceCounter(&previousFrameTime);
+    if (songTime == 0)
+        BASS_ChannelPlay(chan, FALSE);
+
+    if ((int)(songTime * 1000) % 1000 == 0)
+        MESS(IDC_POS, TBM_SETPOS, TRUE, songTime);
+    UpdatePositionLabel();
+
+    Stopwatch_Stop(previousFrameTime);
+    songTime += previousFrameTime.ElapsedSeconds;
+    Stopwatch_Start(previousFrameTime);
 
     if (songTime >= 0)
     {
@@ -199,9 +234,7 @@ void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, D
         }
     }
 
-    if ((int)(songTime * 1000) % 1000 == 0)
-        MESS(IDC_POS, TBM_SETPOS, TRUE, songTime);
-    UpdatePositionLabel();
+    ReleaseMutex(ghMutex);
 }
 
 /**
@@ -230,7 +263,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                 path[ofn.nFileOffset - 1] = 0;
 
                 timeKillEvent(pt);
-                songTime = 0;
+                endSyncProc(0, 0, 0, 0);
 
                 // update the button to show the loaded file name (without path)
                 MESS(ID_OPEN, WM_SETTEXT, 0, GetFileName(file));
@@ -295,8 +328,9 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                 SendMessage(win, WM_COMMAND, IDC_CHKBEAT, l);
 
                 // play new created stream
+                BASS_ChannelSetSync(chan, BASS_SYNC_END, 0, endSyncProc, 0);
+                pt = timeSetEvent(1, 0, playTimerProc, 0, TIME_PERIODIC | TIME_KILL_SYNCHRONOUS | TIME_CALLBACK_FUNCTION);
                 //BASS_ChannelPlay(chan, FALSE);
-                pt = timeSetEvent(1, 0, playTimerProc, 0, TIME_PERIODIC);
 
                 // create bpmChan stream and get bpm value for IDC_EPBPM seconds from current position
                 GetDlgItemText(win, IDC_EPBPM, c, 5);
@@ -413,10 +447,6 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
         ofn.nMaxFile = MAX_PATH;
         ofn.Flags = OFN_HIDEREADONLY | OFN_EXPLORER;
 
-        // 检索性能计数器的频率。性能计数器的频率在系统引导时是固定的，并且在所有处理器中都是一致的。
-        // 因此，只需在应用程序初始化时查询频率，就可以缓存结果。
-        QueryPerformanceFrequency(&Frequency);
-
         // setup output - default device, 44100hz, stereo, 16 bits
         if (!BASS_Init(-1, 44100, 0, h, NULL)) {
             Error("Can't initialize device");
@@ -482,9 +512,14 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return 1;
     }
 
+    Stopwatch_StartNew(previousFrameTime);
+    ghMutex = CreateMutex(NULL, FALSE, NULL);
+
     // 它的作用是从一个对话框资源中创建一个模态对话框。
     // 该函数直到指定的回调函数通过调用EndDialog函数中止模态的对话框才能返回控制。
     DialogBox(inst, (char*)1000, 0, &dialogproc);
+
+    CloseHandle(ghMutex);
 
     BASS_Free();
 
