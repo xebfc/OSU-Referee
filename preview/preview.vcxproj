@@ -15,10 +15,12 @@
     <ClInclude Include="bass_fx.h" />
     <ClInclude Include="bpm.h" />
     <ClInclude Include="stopwatch.h" />
+    <ClInclude Include="timer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="bpm.c" />
     <ClCompile Include="stopwatch.c" />
+    <ClCompile Include="timer.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="bpm.rc" />

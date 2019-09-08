@@ -14,6 +14,9 @@
 #include "bass_fx.h"
 #include "bpm.h"
 #include "stopwatch.h"
+#include "timer.h"
+
+#pragma warning(disable: 6387)
 
 HWND win = NULL;
 HINSTANCE inst;
@@ -43,7 +46,7 @@ double Length;          // 歌曲总长度
         case WAIT_OBJECT_0: \
             break; \
         case WAIT_OBJECT_0 + 1: \
-            PeekMessage(&msg, NULL, 0, 0, PM_REMOVE|PM_NOYIELD); \
+            PeekMessage(&msg, NULL, 0, 0, PM_REMOVE); \
             DispatchMessage(&msg); \
             continue; \
         default: \
@@ -207,6 +210,11 @@ void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void* user)
 *
 * 返回值：
 * 此函数指针不返回值。
+*
+* 备注:
+* 除了PostMessage，timeGetSystemTime，timeGetTime，timeSetEvent，timeKillEvent，
+* midiOutShortMsg，midiOutLongMsg和OutputDebugString之外，
+* 应用程序不应该从回调函数内部调用任何系统定义的函数。
 */
 void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
 {
@@ -262,7 +270,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                 memcpy(path, file, ofn.nFileOffset);
                 path[ofn.nFileOffset - 1] = 0;
 
-                timeKillEvent(pt);
+                TIMER_timeKillEvent(pt);
                 endSyncProc(0, 0, 0, 0);
 
                 // update the button to show the loaded file name (without path)
@@ -329,7 +337,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
 
                 // play new created stream
                 BASS_ChannelSetSync(chan, BASS_SYNC_END, 0, endSyncProc, 0);
-                pt = timeSetEvent(1, 0, playTimerProc, 0, TIME_PERIODIC | TIME_KILL_SYNCHRONOUS | TIME_CALLBACK_FUNCTION);
+                pt = TIMER_timeSetEvent(1, 0, playTimerProc, 0, TIME_PERIODIC | TIME_KILL_SYNCHRONOUS | TIME_CALLBACK_FUNCTION);
                 //BASS_ChannelPlay(chan, FALSE);
 
                 // create bpmChan stream and get bpm value for IDC_EPBPM seconds from current position
@@ -512,7 +520,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return 1;
     }
 
-    Stopwatch_StartNew(previousFrameTime);
+    Stopwatch_New(previousFrameTime);
     ghMutex = CreateMutex(NULL, FALSE, NULL);
 
     // 它的作用是从一个对话框资源中创建一个模态对话框。

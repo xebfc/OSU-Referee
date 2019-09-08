@@ -4,9 +4,8 @@
 
 void Stopwatch_StartNew(stopwatch_t t)
 {
-    // 检索性能计数器的频率。性能计数器的频率在系统引导时是固定的，并且在所有处理器中都是一致的。
-    // 因此，只需在应用程序初始化时查询频率，就可以缓存结果。
-    QueryPerformanceFrequency(&t.Frequency);
+    Stopwatch_New(t);
+    Stopwatch_Start(t);
 }
 
 void Stopwatch_Reset(stopwatch_t t)
@@ -32,8 +31,27 @@ void Stopwatch_Start(stopwatch_t t)
 
 void Stopwatch_Stop(stopwatch_t t)
 {
-    QueryPerformanceCounter(&t.EndingTime);
-    t.ElapsedSeconds = (t.EndingTime.QuadPart - t.StartingTime.QuadPart) * 1.0 / t.Frequency.QuadPart;
-    t.ElapsedMilliseconds = t.ElapsedSeconds * 1000;
+    Stopwatch_Elapsed(t);
     t.IsRunning = FALSE;
+}
+
+stopwatch_t Stopwatch_Elapsed(stopwatch_t t)
+{
+    if (t.IsRunning)
+    {
+        QueryPerformanceCounter(&t.EndingTime);
+        t.ElapsedSeconds = (t.EndingTime.QuadPart - t.StartingTime.QuadPart) * 1.0 / t.Frequency.QuadPart;
+        t.ElapsedMilliseconds = t.ElapsedSeconds * 1000;
+    }
+    return t;
+}
+
+UINT Stopwatch_ElapsedSeconds(stopwatch_t t)
+{
+    return Stopwatch_Elapsed(t).ElapsedSeconds;
+}
+
+UINT Stopwatch_ElapsedMilliseconds(stopwatch_t t)
+{
+    return Stopwatch_Elapsed(t).ElapsedMilliseconds;
 }
