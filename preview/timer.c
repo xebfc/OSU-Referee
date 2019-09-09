@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "timer.h"
 #include "stopwatch.h"
@@ -30,8 +31,8 @@ DWORD WINAPI lpStartAddress(LPVOID lpParameter)
     UINT next = 0;
     do {
         next += timer->uDelay;
-        while ((UINT)Stopwatch_ElapsedSeconds(&s) < next)
-            ; // 自旋
+        while ((UINT)Stopwatch_ElapsedMilliseconds(&s) < next)
+            Sleep(next - (UINT)s.ElapsedMilliseconds);
 
         timer->lpTimeProc(timer->lpThreadId, 0, timer->dwUser, 0, 0); // 触发任务
 
@@ -39,6 +40,7 @@ DWORD WINAPI lpStartAddress(LPVOID lpParameter)
             continue;
     } while (FALSE); // 默认 TIME_ONESHOT
 
+    free(lpParameter);
     return 0;
 }
 
@@ -63,7 +65,7 @@ MMRESULT TIMER_timeSetEvent(
     lpParameter->dwUser = dwUser;
     lpParameter->fuEvent = fuEvent;
 
-    lpParameter->hThread = CreateThread(NULL, 0, lpStartAddress, &lpParameter, 0, &lpParameter->lpThreadId);
+    lpParameter->hThread = CreateThread(NULL, 0, lpStartAddress, lpParameter, 0, &lpParameter->lpThreadId);
     return lpParameter;
 }
 
