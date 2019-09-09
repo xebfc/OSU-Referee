@@ -4,8 +4,6 @@
 #include "timer.h"
 #include "stopwatch.h"
 
-static stopwatch_t default_stopwatch;
-
 typedef struct
 {
     UINT            uDelay;
@@ -15,7 +13,7 @@ typedef struct
     UINT            fuEvent;
 
     DWORD           lpThreadId; // 线程标识符
-    DWORD           hThread;    // 线程的句柄
+    HANDLE          hThread;    // 线程的句柄
     BOOL            __close;
     HANDLE          __cLock;
 } timer_t;
@@ -77,7 +75,11 @@ MMRESULT TIMER_timeSetEvent(
     timer->__close = (timer->fuEvent & TIME_PERIODIC) != TIME_PERIODIC; // TIME_ONESHOT
     timer->__cLock = CreateMutex(NULL, FALSE, NULL);
 
-    if (!SetThreadPriority(timer->hThread, THREAD_PRIORITY_HIGHEST)
+    // 将一个进程的优先级设置为 Realtime 是通知操作系统，我们绝不希望该进程将 CPU 时间出让给其它进程。
+    // 如果你的程序误入一个无限循环，会发现甚至是操作系统也被锁住了，就只好去按电源按钮了o(>_<)o
+    // 正是由于这一原因，High 通常是实时程序的最好选择。
+    if (!SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS)
+        || !SetThreadPriority(timer->hThread, THREAD_PRIORITY_HIGHEST)
         || timeBeginPeriod(timer->uResolution) == TIMERR_NOCANDO
         || ResumeThread(timer->hThread) == -1)
         goto err; // 任何一项失败对高精度来说都是致命的
@@ -93,7 +95,13 @@ MMRESULT TIMER_timeKillEvent(UINT uTimerID)
 {
     timer_t* timer = (timer_t*)uTimerID;
 
-    if (timer == NULL || timer->hThread == NULL)
+    // 确定调用进程是否具有对指定地址的内存的读访问权
+    if (timer == NULL || IsBadCodePtr(timer))
+        return MMSYSERR_INVALPARAM;
+
+    // 判断线程是否存在
+    DWORD lpThreadId = GetThreadId(timer->hThread);
+    if (!lpThreadId || lpThreadId != timer->lpThreadId)
         return MMSYSERR_INVALPARAM;
 
     MWFMO(timer->__cLock, INFINITE);
