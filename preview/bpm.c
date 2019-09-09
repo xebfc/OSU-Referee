@@ -218,14 +218,20 @@ void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void* user)
 */
 void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
 {
-    MWFMO(ghMutex);
-
     if (songTime == 0)
         BASS_ChannelPlay(chan, FALSE);
 
+    // 更新进度条
     if ((int)(songTime * 1000) % 1000 == 0)
         MESS(IDC_POS, TBM_SETPOS, TRUE, songTime);
     UpdatePositionLabel();
+
+    //---------------------------------------------------------------------------
+    // 虚拟时间轴，表示音频当前播放位置，精度为：毫秒
+    // 算法来源于：https://www.reddit.com/r/gamedev/comments/13y26t/how_do_rhythm_games_stay_in_sync_with_the_music/
+    //---------------------------------------------------------------------------
+
+    MWFMO(ghMutex);
 
     Stopwatch_Stop(&previousFrameTime);
     songTime += previousFrameTime.ElapsedSeconds;

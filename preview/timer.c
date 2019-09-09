@@ -29,16 +29,17 @@ DWORD WINAPI lpStartAddress(LPVOID lpParameter)
 
     // 固定时间框架
     UINT next = 0;
-    do {
+    while (TRUE)
+    {
         next += timer->uDelay;
         while ((UINT)Stopwatch_ElapsedMilliseconds(&s) < next)
-            Sleep(next - (UINT)s.ElapsedMilliseconds);
+            Sleep(next - (UINT)s.ElapsedMilliseconds); // 自旋 + 阻塞
 
         timer->lpTimeProc(timer->lpThreadId, 0, timer->dwUser, 0, 0); // 触发任务
 
-        if ((timer->fuEvent & TIME_PERIODIC) == TIME_PERIODIC)
-            continue;
-    } while (FALSE); // 默认 TIME_ONESHOT
+        if ((timer->fuEvent & TIME_PERIODIC) != TIME_PERIODIC)
+            break; // 默认 TIME_ONESHOT
+    }
 
     free(lpParameter);
     return 0;
