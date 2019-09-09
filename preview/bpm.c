@@ -191,7 +191,7 @@ void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void* user)
 
     songTime = 0;
     lastReportedPlayheadPosition = 0;
-    Stopwatch_Reset(previousFrameTime);
+    Stopwatch_Reset(&previousFrameTime);
 
     ReleaseMutex(ghMutex);
 }
@@ -227,9 +227,9 @@ void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, D
         MESS(IDC_POS, TBM_SETPOS, TRUE, songTime);
     UpdatePositionLabel();
 
-    Stopwatch_Stop(previousFrameTime);
+    Stopwatch_Stop(&previousFrameTime);
     songTime += previousFrameTime.ElapsedSeconds;
-    Stopwatch_Start(previousFrameTime);
+    Stopwatch_Start(&previousFrameTime);
 
     if (songTime >= 0)
     {
@@ -520,7 +520,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return 1;
     }
 
-    Stopwatch_New(previousFrameTime);
+    Stopwatch_New(&previousFrameTime);
     ghMutex = CreateMutex(NULL, FALSE, NULL);
 
     // 它的作用是从一个对话框资源中创建一个模态对话框。

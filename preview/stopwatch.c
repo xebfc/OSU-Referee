@@ -2,56 +2,56 @@
 
 #include "stopwatch.h"
 
-void Stopwatch_StartNew(stopwatch_t t)
+void Stopwatch_StartNew(stopwatch_t* p)
 {
-    Stopwatch_New(t);
-    Stopwatch_Start(t);
+    Stopwatch_New(p);
+    Stopwatch_Start(p);
 }
 
-void Stopwatch_Reset(stopwatch_t t)
+void Stopwatch_Reset(stopwatch_t* p)
 {
-    t.StartingTime.QuadPart = 0;
-    t.EndingTime.QuadPart = 0;
-    t.ElapsedSeconds = 0;
-    t.ElapsedMilliseconds = 0;
-    t.IsRunning = FALSE;
+    p->StartingTime.QuadPart = 0;
+    p->EndingTime.QuadPart = 0;
+    p->ElapsedSeconds = 0;
+    p->ElapsedMilliseconds = 0;
+    p->IsRunning = FALSE;
 }
 
-void Stopwatch_Restart(stopwatch_t t)
+void Stopwatch_Restart(stopwatch_t* p)
 {
-    Stopwatch_Reset(t);
-    Stopwatch_Start(t);
+    Stopwatch_Reset(p);
+    Stopwatch_Start(p);
 }
 
-void Stopwatch_Start(stopwatch_t t)
+void Stopwatch_Start(stopwatch_t* p)
 {
-    QueryPerformanceCounter(&t.StartingTime);
-    t.IsRunning = TRUE;
+    QueryPerformanceCounter(&p->StartingTime);
+    p->IsRunning = TRUE;
 }
 
-void Stopwatch_Stop(stopwatch_t t)
+void Stopwatch_Stop(stopwatch_t* p)
 {
-    Stopwatch_Elapsed(t);
-    t.IsRunning = FALSE;
+    Stopwatch_Elapsed(p);
+    p->IsRunning = FALSE;
 }
 
-stopwatch_t Stopwatch_Elapsed(stopwatch_t t)
+stopwatch_t* Stopwatch_Elapsed(stopwatch_t* p)
 {
-    if (t.IsRunning)
+    if (p->IsRunning)
     {
-        QueryPerformanceCounter(&t.EndingTime);
-        t.ElapsedSeconds = (t.EndingTime.QuadPart - t.StartingTime.QuadPart) * 1.0 / t.Frequency.QuadPart;
-        t.ElapsedMilliseconds = t.ElapsedSeconds * 1000;
+        QueryPerformanceCounter(&p->EndingTime);
+        p->ElapsedSeconds = (p->EndingTime.QuadPart - p->StartingTime.QuadPart) * 1.0 / p->Frequency.QuadPart;
+        p->ElapsedMilliseconds = p->ElapsedSeconds * 1000;
     }
-    return t;
+    return p;
 }
 
-UINT Stopwatch_ElapsedSeconds(stopwatch_t t)
+int Stopwatch_ElapsedSeconds(stopwatch_t* p)
 {
-    return Stopwatch_Elapsed(t).ElapsedSeconds;
+    return Stopwatch_Elapsed(p)->ElapsedSeconds;
 }
 
-UINT Stopwatch_ElapsedMilliseconds(stopwatch_t t)
+int Stopwatch_ElapsedMilliseconds(stopwatch_t* p)
 {
-    return Stopwatch_Elapsed(t).ElapsedMilliseconds;
+    return Stopwatch_Elapsed(p)->ElapsedMilliseconds;
 }
