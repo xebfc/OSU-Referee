@@ -16,8 +16,6 @@
 #include "stopwatch.h"
 #include "timer.h"
 
-#pragma warning(disable: 6387)
-
 HWND win = NULL;
 HINSTANCE inst;
 
@@ -34,27 +32,6 @@ double songTime;        // 当前播放位置，单位：秒
 double lastReportedPlayheadPosition;
 stopwatch_t previousFrameTime;
 double Length;          // 歌曲总长度
-
-#define MWFMO(hHandle) \
-{ \
-    DWORD dwRet; \
-    MSG msg; \
-    while (TRUE) \
-    { \
-        dwRet = MsgWaitForMultipleObjects(1, &hHandle, FALSE, INFINITE, QS_ALLINPUT); \
-        switch (dwRet) { \
-        case WAIT_OBJECT_0: \
-            break; \
-        case WAIT_OBJECT_0 + 1: \
-            PeekMessage(&msg, NULL, 0, 0, PM_REMOVE); \
-            DispatchMessage(&msg); \
-            continue; \
-        default: \
-            break; \
-        } \
-        break; \
-    } \
-}
 
 /**
 * 在对话框中将消息发送到指定的控件
@@ -187,7 +164,7 @@ char* GetFileName(const char* fp)
 
 void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void* user)
 {
-    MWFMO(ghMutex);
+    MWFMO(ghMutex, INFINITE);
 
     songTime = 0;
     lastReportedPlayheadPosition = 0;
@@ -231,7 +208,7 @@ void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, D
     // 算法来源于：https://www.reddit.com/r/gamedev/comments/13y26t/how_do_rhythm_games_stay_in_sync_with_the_music/
     //---------------------------------------------------------------------------
 
-    MWFMO(ghMutex);
+    WaitForSingleObject(ghMutex, INFINITE);
 
     Stopwatch_Stop(&previousFrameTime);
     songTime += previousFrameTime.ElapsedSeconds;

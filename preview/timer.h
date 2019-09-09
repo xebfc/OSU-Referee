@@ -4,6 +4,33 @@
 #include <windows.h>
 
 /**
+* 调用等待函数和直接或间接创建窗口的代码时要小心。如果一个线程创建了任何窗口，它必须处理消息。
+* 消息广播被发送到系统中的所有窗口。使用没有超时间隔的等待函数的线程可能会导致系统死锁。
+* 因此，如果您有一个创建窗口的线程，请使用 MsgWaitForMultipleObjects 或 MsgWaitForMultipleObjectsEx，
+* 而不是 WaitForMultipleObjects 或 WaitForSingleObject。
+*/
+#define MWFMO(hHandle, dwMilliseconds) \
+{ \
+    DWORD dwRet; \
+    MSG msg; \
+    while (TRUE) \
+    { \
+        dwRet = MsgWaitForMultipleObjects(1, &hHandle, FALSE, dwMilliseconds, QS_ALLINPUT); \
+        switch (dwRet) { \
+        case WAIT_OBJECT_0: \
+            break; \
+        case WAIT_OBJECT_0 + 1: \
+            PeekMessage(&msg, NULL, 0, 0, PM_REMOVE); \
+            DispatchMessage(&msg); \
+            continue; \
+        default: \
+            break; \
+        } \
+        break; \
+    } \
+}
+
+/**
 * 为了在timeSetEvent中使用线程锁，此函数将仿照原函数重新实现。在支持原函数功能的基础上，取消从回调函数内部调用任何系统定义的函数限制。
 *
 * 以下为原函数内容：
@@ -28,9 +55,9 @@
 *                       所述fuEvent参数还可以包括以下值中的一个。
 *                       TIME_CALLBACK_FUNCTION	    当计时器到期时，Windows会调用lpTimeProc参数指向的函数。这是默认值。
 *                       TIME_CALLBACK_EVENT_SET	    当计时器到期时，Windows调用SetEvent函数来设置lpTimeProc参数指向的事件。
-                                                    该dwUser参数被忽略。
+*                                                   该dwUser参数被忽略。
 *                       TIME_CALLBACK_EVENT_PULSE   当计时器到期时，Windows调用PulseEvent函数来脉冲lpTimeProc参数指向的事件。
-                                                    该dwUser参数被忽略。
+*                                                   该dwUser参数被忽略。
 *                       TIME_KILL_SYNCHRONOUS	    传递此标志可防止在调用timeKillEvent函数后发生事件。
 * @return               如果成功则返回计时器事件的标识符，否则返回错误。如果失败并且未创建计时器事件，则此函数返回NULL。
 *                       （此标识符也传递给回调函数。）
