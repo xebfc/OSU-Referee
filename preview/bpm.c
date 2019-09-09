@@ -208,7 +208,7 @@ void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, D
     // 算法来源于：https://www.reddit.com/r/gamedev/comments/13y26t/how_do_rhythm_games_stay_in_sync_with_the_music/
     //---------------------------------------------------------------------------
 
-    WaitForSingleObject(ghMutex, INFINITE);
+    WaitForSingleObject(ghMutex, 0);
 
     Stopwatch_Stop(&previousFrameTime);
     songTime += previousFrameTime.ElapsedSeconds;
