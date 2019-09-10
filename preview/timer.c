@@ -123,7 +123,7 @@ MMRESULT TIMER_timeKillEvent(UINT uTimerID)
         timer->lpTimeProc = NULL;
     ReleaseMutex(timer->__cLock);
 
-    MWFMO(timer->hThread, INFINITE);
+    MWFMO(timer->hThread, INFINITE); // Wait Functions
     timeEndPeriod(timer->uResolution);
     CH(timer->__cLock);
     CloseHandle(timer->hThread); // 关闭线程句柄不会终止关联的线程或删除线程对象
