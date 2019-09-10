@@ -16,12 +16,16 @@ typedef struct
     HANDLE          hThread;    // 线程的句柄
     BOOL            __close;
     HANDLE          __cLock;
+    BOOL            __error;
 } timer_t;
 
 // ThreadProc
 DWORD WINAPI lpStartAddress(LPVOID lpParameter)
 {
     timer_t* timer = (timer_t*)lpParameter;
+
+    if (timer->__error)
+        return 1; // ExitThread
 
     stopwatch_t s;
     Stopwatch_StartNew(&s);
@@ -40,7 +44,7 @@ DWORD WINAPI lpStartAddress(LPVOID lpParameter)
         ReleaseMutex(timer->__cLock);
 
         if (timer->__close)
-            break; // 强行终止会导致资源无法被正确释放
+            break; // 终止线程运行的最佳方法是让它的线程函数返回
     }
 
     return 0;
@@ -80,10 +84,16 @@ MMRESULT TIMER_timeSetEvent(
     // 正是由于这一原因，High 通常是实时程序的最好选择。
     if (!SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS)
         || !SetThreadPriority(timer->hThread, THREAD_PRIORITY_HIGHEST)
-        || timeBeginPeriod(timer->uResolution) == TIMERR_NOCANDO
-        || ResumeThread(timer->hThread) == -1)
-        goto err; // 任何一项失败对高精度来说都是致命的
+        || timeBeginPeriod(timer->uResolution) == TIMERR_NOCANDO)
+    {
+        timer->__error = TRUE;
+        ResumeThread(timer->hThread);
+        CloseHandle(timer->hThread);
+        goto err; // 对于高精度来说任何一项失败都是致命的。
+    }
 
+    timer->__error = FALSE;
+    ResumeThread(timer->hThread);
     return timer;
 
 err:
@@ -99,7 +109,7 @@ MMRESULT TIMER_timeKillEvent(UINT uTimerID)
     if (timer == NULL || IsBadCodePtr(timer))
         return MMSYSERR_INVALPARAM;
 
-    // 判断线程是否存在
+    // 判断线程句柄是否有效
     DWORD lpThreadId = GetThreadId(timer->hThread);
     if (!lpThreadId || lpThreadId != timer->lpThreadId)
         return MMSYSERR_INVALPARAM;
@@ -110,7 +120,7 @@ MMRESULT TIMER_timeKillEvent(UINT uTimerID)
         timer->lpTimeProc = NULL;
     ReleaseMutex(timer->__cLock);
 
-    CloseHandle(timer->hThread);
+    CloseHandle(timer->hThread); // 关闭线程句柄不会终止关联的线程或删除线程对象
     timeEndPeriod(timer->uResolution);
     free(timer);
     return TIMERR_NOERROR;
