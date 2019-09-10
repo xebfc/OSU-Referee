@@ -3,6 +3,7 @@
 
 #include <windows.h>
 
+#define CH(hObject) (hObject == NULL ? FALSE : CloseHandle(hObject))
 /**
 * 调用等待函数和直接或间接创建窗口的代码时要小心。如果一个线程创建了任何窗口，它必须处理消息。
 * 消息广播被发送到系统中的所有窗口。使用没有超时间隔的等待函数的线程可能会导致系统死锁。
@@ -31,8 +32,8 @@
 }
 
 /**
-* 为了避免发生死锁，此函数将仿照原函数重新实现，且fuEvent禁止使用TIME_CALLBACK_EVENT_SET和TIME_CALLBACK_EVENT_PULSE。
-* 为了在保证其结果与原函数相同，仿函数允许fuEvent传入禁值，但不会对其做任何操作。
+* 为了解决死锁问题，此函数仿照原函数进行了重写，fuEvent禁止使用TIME_CALLBACK_EVENT_SET和TIME_CALLBACK_EVENT_PULSE。
+* 为了保证结果与原函数相同，仿函数允许fuEvent传入禁值，但不会对其做任何操作。
 *
 * 以下为原函数内容：
 *

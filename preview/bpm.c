@@ -510,7 +510,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // 该函数直到指定的回调函数通过调用EndDialog函数中止模态的对话框才能返回控制。
     DialogBox(inst, (char*)1000, 0, &dialogproc);
 
-    CloseHandle(ghMutex);
+    CH(ghMutex);
 
     BASS_Free();
 

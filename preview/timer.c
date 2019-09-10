@@ -88,6 +88,9 @@ MMRESULT TIMER_timeSetEvent(
     {
         timer->__error = TRUE;
         ResumeThread(timer->hThread);
+        CH(timer->__cLock);
+
+        MWFMO(timer->hThread, INFINITE);
         CloseHandle(timer->hThread);
         goto err; // 对于高精度来说任何一项失败都是致命的。
     }
@@ -120,8 +123,10 @@ MMRESULT TIMER_timeKillEvent(UINT uTimerID)
         timer->lpTimeProc = NULL;
     ReleaseMutex(timer->__cLock);
 
-    CloseHandle(timer->hThread); // 关闭线程句柄不会终止关联的线程或删除线程对象
+    MWFMO(timer->hThread, INFINITE);
     timeEndPeriod(timer->uResolution);
+    CH(timer->__cLock);
+    CloseHandle(timer->hThread); // 关闭线程句柄不会终止关联的线程或删除线程对象
     free(timer);
     return TIMERR_NOERROR;
 }
