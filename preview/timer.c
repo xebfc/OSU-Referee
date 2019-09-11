@@ -77,7 +77,6 @@ MMRESULT TIMER_timeSetEvent(
         goto err;
 
     timer->__close = (timer->fuEvent & TIME_PERIODIC) != TIME_PERIODIC; // TIME_ONESHOT
-    timer->__cLock = CreateMutex(NULL, FALSE, NULL);
 
     // 将一个进程的优先级设置为 Realtime 是通知操作系统，我们绝不希望该进程将 CPU 时间出让给其它进程。
     // 如果你的程序误入一个无限循环，会发现甚至是操作系统也被锁住了，就只好去按电源按钮了o(>_<)o
@@ -88,14 +87,15 @@ MMRESULT TIMER_timeSetEvent(
     {
         timer->__error = TRUE;
         ResumeThread(timer->hThread);
-        CH(timer->__cLock);
 
         MWFMO(timer->hThread, INFINITE);
         CloseHandle(timer->hThread);
         goto err; // 对于高精度来说任何一项失败都是致命的。
     }
 
+    timer->__cLock = CreateMutex(NULL, FALSE, NULL);
     timer->__error = FALSE;
+
     ResumeThread(timer->hThread);
     return timer;
 
