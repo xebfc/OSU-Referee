@@ -26,6 +26,8 @@ DWORD bpmChan;			// decoding channel handle for BPM detection
 float bpmValue;			// bpm value returned by BASS_FX_BPM_DecodeGet/GetBPM_Callback functions
 BASS_CHANNELINFO info;
 
+#define CH(hObject) (hObject == NULL ? FALSE : CloseHandle(hObject))
+
 MMRESULT pt;            // everyFrame timer
 HANDLE ghMutex;
 double songTime;        // 当前播放位置，单位：秒

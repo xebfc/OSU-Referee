@@ -3,7 +3,6 @@
 
 #include <windows.h>
 
-#define CH(hObject) (hObject == NULL ? FALSE : CloseHandle(hObject))
 /**
 * 调用等待函数和直接或间接创建窗口的代码时要小心。如果一个线程创建了任何窗口，它必须处理消息。
 * 消息广播被发送到系统中的所有窗口。使用没有超时间隔的等待函数的线程可能会导致系统死锁。
@@ -21,8 +20,11 @@
         case WAIT_OBJECT_0: \
             break; \
         case WAIT_OBJECT_0 + 1: \
-            PeekMessage(&msg, NULL, 0, 0, PM_REMOVE); \
-            DispatchMessage(&msg); \
+            if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) \
+            { \
+                TranslateMessage(&msg); \
+                DispatchMessage(&msg); \
+            } \
             continue; \
         default: \
             break; \

@@ -19,6 +19,9 @@ typedef struct
     HANDLE          hThread;    // 线程句柄
     BOOL            __close;
     BOOL            __error;
+
+    BOOL            killSync;
+    HANDLE          event;
 } timer_t;
 
 // ThreadProc
@@ -57,8 +60,11 @@ DWORD WINAPI lpStartAddress(LPVOID lpParameter)
     }
 
     timeEndPeriod(getResolution(timer));
-    CloseHandle(timer->hThread); // 关闭线程句柄不会终止关联的线程或删除线程对象
+    WaitForSingleObject(timer->event, INFINITE);
+    CloseHandle(timer->event);
 
+    // 统一释放资源
+    CloseHandle(timer->hThread); // 关闭线程句柄不会终止关联的线程或删除线程对象
     free(timer);
     return 0;
 }
@@ -76,7 +82,7 @@ MMRESULT TIMER_timeSetEvent(
     timer_t* timer = (timer_t*)malloc(sizeof(timer_t));
 
     if (timer == NULL)
-        return NULL;
+        goto end;
 
     timer->uDelay = uDelay;
     timer->uResolution = uResolution;
@@ -87,9 +93,15 @@ MMRESULT TIMER_timeSetEvent(
     timer->hThread = CreateThread(NULL, 0, lpStartAddress, timer, CREATE_SUSPENDED, &timer->lpThreadId);
 
     if (timer->hThread == NULL)
-        goto err;
+        goto clear;
 
     timer->__close = (timer->fuEvent & TIME_PERIODIC) != TIME_PERIODIC; // TIME_ONESHOT
+    timer->__error = FALSE;
+    timer->killSync = (timer->fuEvent & TIME_KILL_SYNCHRONOUS) == TIME_KILL_SYNCHRONOUS;
+    timer->event = CreateEvent(NULL, FALSE, !timer->killSync, NULL);
+
+    if (timer->event == NULL)
+        goto err;
 
     // 将一个进程的优先级设置为 Realtime 是通知操作系统，我们绝不希望该进程将 CPU 时间出让给其它进程。
     // 如果你的程序误入一个无限循环，会发现甚至是操作系统也被锁住了，就只好去按电源按钮了o(>_<)o
@@ -98,20 +110,23 @@ MMRESULT TIMER_timeSetEvent(
         || !SetThreadPriority(timer->hThread, THREAD_PRIORITY_HIGHEST)
         || timeBeginPeriod(getResolution(timer)) == TIMERR_NOCANDO)
     {
-        timer->__error = TRUE;
-        ResumeThread(timer->hThread);
-
-        MWFMO(timer->hThread, INFINITE); // Wait Function
-        CloseHandle(timer->hThread);
+        CloseHandle(timer->event);
         goto err; // 对于高精度来说任何一项失败都是致命的
     }
 
-    timer->__error = FALSE;
     ResumeThread(timer->hThread);
     return timer;
 
 err:
+    timer->__error = TRUE;
+    ResumeThread(timer->hThread);
+    MWFMO(timer->hThread, INFINITE); // 等待线程结束
+    CloseHandle(timer->hThread);
+
+clear:
     free(timer);
+
+end:
     return NULL;
 }
 
@@ -129,7 +144,15 @@ MMRESULT TIMER_timeKillEvent(UINT uTimerID)
         return MMSYSERR_INVALPARAM;
 
     timer->__close = TRUE; // TerminateThread
-    if ((timer->fuEvent & TIME_KILL_SYNCHRONOUS) == TIME_KILL_SYNCHRONOUS)
-        MWFMO(timer->hThread, INFINITE);
+    if (timer->killSync)
+    {
+        HANDLE hThread, hProcess = GetCurrentProcess();
+        DuplicateHandle(hProcess, timer->hThread, hProcess, &hThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
+
+        SetEvent(timer->event);
+        //MWFMO(timer->hThread, INFINITE);
+        MWFMO(hThread, INFINITE); // timer->hThread 可能已被释放，使用前需要复制一份
+        CloseHandle(hThread);
+    }
     return TIMERR_NOERROR;
 }
