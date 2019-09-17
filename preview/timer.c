@@ -43,7 +43,7 @@ DWORD WINAPI lpStartAddress(LPVOID lpParameter)
         while ((UINT)Stopwatch_ElapsedMilliseconds(&s) < next)
         {
             if (!timer->uResolution)
-                continue; // 自旋的精准度最高，尽可能准确地发生周期性事件
+                continue;
 
             // Sleep(1) 会在 1ms 与 2ms 两种状态间跳动，也就是可能会产生 +1ms 多的误差。如果需要修正这个误差，
             // 可以在阻塞 n 毫秒时，使用 Sleep(n-1)，并通过 Stopwatch 计时，剩余等待时间用 Sleep(0) 或自旋来补充。
