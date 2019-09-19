@@ -150,7 +150,6 @@ MMRESULT TIMER_timeKillEvent(UINT uTimerID)
         DuplicateHandle(hProcess, timer->hThread, hProcess, &hThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
 
         SetEvent(timer->event);
-        //MsgWaitForSingleObject(timer->hThread, INFINITE);
         MsgWaitForSingleObject(hThread, INFINITE); // timer->hThread 可能已被释放，使用前需要复制一份
         CloseHandle(hThread);
     }
