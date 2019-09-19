@@ -26,14 +26,14 @@ DWORD bpmChan;			// decoding channel handle for BPM detection
 float bpmValue;			// bpm value returned by BASS_FX_BPM_DecodeGet/GetBPM_Callback functions
 BASS_CHANNELINFO info;
 
-#define CH(hObject) (hObject == NULL ? FALSE : CloseHandle(hObject))
-
 MMRESULT pt;            // everyFrame timer
 HANDLE ghMutex;
 double songTime;        // 当前播放位置，单位：秒
 double lastReportedPlayheadPosition;
 stopwatch_t previousFrameTime;
 double Length;          // 歌曲总长度
+
+#define CH(hObject) (hObject == NULL ? FALSE : CloseHandle(hObject))
 
 /**
 * 在对话框中将消息发送到指定的控件
@@ -70,17 +70,6 @@ void UpdatePositionLabel()
     if (!BASS_FX_TempoGetRateRatio(chan)) return;
     {
         char c[30];
-        /**
-        * TBM_GETRANGEMAX 消息
-        *
-        * 检索轨迹栏中滑块的最大位置。
-        *
-        * 参数：
-        * wParam,lParam 必须为零。
-        *
-        * 返回值：
-        * 返回一个32位值，指定轨迹栏中最小滑块位置到最大滑块位置的最大位置。
-        */
         double totalsec = Length / BASS_FX_TempoGetRateRatio(chan);
         double posec = songTime / BASS_FX_TempoGetRateRatio(chan);
         sprintf(c, "%02d:%02d:%03d / %02d:%02d:%03d", (int)posec / 60, (int)posec % 60, (int)(posec * 1000) % 1000
@@ -146,7 +135,10 @@ void DecodingBPM(BOOL newStream, double startSec, double endSec, const char* fp)
     }
 
     // detect bpm in background and return progress in GetBPM_ProgressCallback function
-    if (bpmChan) bpmValue = BASS_FX_BPM_DecodeGet(bpmChan, startSec, endSec, 0, BASS_FX_BPM_BKGRND | BASS_FX_BPM_MULT2 | BASS_FX_FREESOURCE, (BPMPROGRESSPROC*)GetBPM_ProgressCallback, 0);
+    if (bpmChan)
+        // 使用 BASS_FX_BPM_BKGRND 后在调用 BASS_FX_BPM_Free 时会造成死锁，仅限 Windows 平台
+        //bpmValue = BASS_FX_BPM_DecodeGet(bpmChan, startSec, endSec, 0, BASS_FX_BPM_BKGRND | BASS_FX_BPM_MULT2 | BASS_FX_FREESOURCE, (BPMPROGRESSPROC*)GetBPM_ProgressCallback, 0);
+        bpmValue = BASS_FX_BPM_DecodeGet(bpmChan, startSec, endSec, 0, BASS_FX_BPM_MULT2 | BASS_FX_FREESOURCE, (BPMPROGRESSPROC*)GetBPM_ProgressCallback, 0);
 
     // update the bpm view
     if (bpmValue) {
@@ -166,7 +158,7 @@ char* GetFileName(const char* fp)
 
 void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void* user)
 {
-    MWFMO(ghMutex, INFINITE);
+    MsgWaitForSingleObject(ghMutex, INFINITE);
 
     songTime = 0;
     lastReportedPlayheadPosition = 0;
@@ -210,7 +202,7 @@ void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, D
     // 算法来源于：https://www.reddit.com/r/gamedev/comments/13y26t/how_do_rhythm_games_stay_in_sync_with_the_music/
     //---------------------------------------------------------------------------
 
-    WaitForSingleObject(ghMutex, 0);
+    MsgWaitForSingleObject(ghMutex, 0);
 
     Stopwatch_Stop(&previousFrameTime);
     songTime += previousFrameTime.ElapsedSeconds;
@@ -328,8 +320,6 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                 // create bpmChan stream and get bpm value for IDC_EPBPM seconds from current position
                 GetDlgItemText(win, IDC_EPBPM, c, 5);
                 {
-                    //double pos = (double)MESS(IDC_POS, TBM_GETPOS, 0, 0);
-                    //double maxpos = (double)MESS(IDC_POS, TBM_GETRANGEMAX, 0, 0);
                     double period = atof(c);
                     DecodingBPM(TRUE, 0, period, file);
                 }
@@ -340,6 +330,8 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
         case IDC_CHKPERIOD:
             if (MESS(IDC_CHKPERIOD, BM_GETCHECK, 0, 0)) {
                 GetDlgItemText(win, IDC_EPBPM, c, 5);
+
+                // 在播放时（BASS_ChannelPlay）检测BPM，变速会造成误差，请使用 BASS_FX_BPM_DecodeGet
                 BASS_FX_BPM_CallbackSet(chan, (BPMPROC*)GetBPM_Callback, (double)atof(c), 0, BASS_FX_BPM_MULT2, 0);
             }
             else

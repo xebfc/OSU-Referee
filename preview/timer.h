@@ -4,36 +4,6 @@
 #include <windows.h>
 
 /**
-* 调用等待函数和直接或间接创建窗口的代码时要小心。如果一个线程创建了任何窗口，它必须处理消息。
-* 消息广播被发送到系统中的所有窗口。使用没有超时间隔的等待函数的线程可能会导致系统死锁。
-* 因此，如果您有一个创建窗口的线程，请使用 MsgWaitForMultipleObjects 或 MsgWaitForMultipleObjectsEx，
-* 而不是 WaitForMultipleObjects 或 WaitForSingleObject。
-*/
-#define MWFMO(hHandle, dwMilliseconds) \
-{ \
-    DWORD dwRet; \
-    MSG msg; \
-    while (TRUE) \
-    { \
-        dwRet = MsgWaitForMultipleObjects(1, &hHandle, FALSE, dwMilliseconds, QS_ALLINPUT); \
-        switch (dwRet) { \
-        case WAIT_OBJECT_0: \
-            break; \
-        case WAIT_OBJECT_0 + 1: \
-            if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) \
-            { \
-                TranslateMessage(&msg); \
-                DispatchMessage(&msg); \
-            } \
-            continue; \
-        default: \
-            break; \
-        } \
-        break; \
-    } \
-}
-
-/**
 * 为了解决死锁问题，此函数仿照原函数进行了重写，fuEvent禁止使用TIME_CALLBACK_EVENT_SET和TIME_CALLBACK_EVENT_PULSE。
 * 为了保证结果与原函数相同，仿函数允许fuEvent传入禁值，但不会对其做任何操作。
 *
@@ -86,5 +56,12 @@ MMRESULT TIMER_timeSetEvent(
 * @return           返回TIMERR_NOERROR如果成功或MMSYSERR_INVALPARAM如果指定计时器事件不存在。
 */
 MMRESULT TIMER_timeKillEvent(UINT uTimerID);
+
+/**
+* 调用等待函数和直接或间接创建窗口的代码时要小心。如果一个线程创建了任何窗口，它必须处理消息。
+* 消息广播被发送到系统中的所有窗口。使用没有超时间隔的等待函数的线程可能会导致系统死锁。
+* 因此，如果您有一个创建窗口的线程，请使用 MsgWaitForMultipleObjects 或 MsgWaitForMultipleObjectsEx。
+*/
+DWORD MsgWaitForSingleObject(HANDLE hHandle, DWORD  dwMilliseconds);
 
 #endif

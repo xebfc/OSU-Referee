@@ -60,7 +60,7 @@ DWORD WINAPI lpStartAddress(LPVOID lpParameter)
     }
 
     timeEndPeriod(getResolution(timer));
-    WaitForSingleObject(timer->event, INFINITE);
+    MsgWaitForSingleObject(timer->event, INFINITE);
     CloseHandle(timer->event);
 
     // 统一释放资源
@@ -120,7 +120,7 @@ MMRESULT TIMER_timeSetEvent(
 err:
     timer->__error = TRUE;
     ResumeThread(timer->hThread);
-    MWFMO(timer->hThread, INFINITE); // 等待线程结束
+    MsgWaitForSingleObject(timer->hThread, INFINITE); // 等待线程结束
     CloseHandle(timer->hThread);
 
 clear:
@@ -150,9 +150,35 @@ MMRESULT TIMER_timeKillEvent(UINT uTimerID)
         DuplicateHandle(hProcess, timer->hThread, hProcess, &hThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
 
         SetEvent(timer->event);
-        //MWFMO(timer->hThread, INFINITE);
-        MWFMO(hThread, INFINITE); // timer->hThread 可能已被释放，使用前需要复制一份
+        //MsgWaitForSingleObject(timer->hThread, INFINITE);
+        MsgWaitForSingleObject(hThread, INFINITE); // timer->hThread 可能已被释放，使用前需要复制一份
         CloseHandle(hThread);
     }
     return TIMERR_NOERROR;
+}
+
+DWORD MsgWaitForSingleObject(HANDLE hHandle, DWORD  dwMilliseconds)
+{
+    DWORD dwRet;
+    MSG msg;
+    while (TRUE)
+    {
+        dwRet = MsgWaitForMultipleObjects(1, &hHandle, FALSE, dwMilliseconds, QS_ALLINPUT);
+        switch (dwRet)
+        {
+        case WAIT_OBJECT_0:
+            break;
+        case WAIT_OBJECT_0 + 1:
+            if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+            {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
+            continue;
+        default:
+            break;
+        }
+        break; // 跳出循环
+    }
+    return dwRet;
 }
