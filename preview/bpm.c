@@ -13,8 +13,10 @@
 #include "bass.h"
 #include "bass_fx.h"
 #include "bpm.h"
+
 #include "stopwatch.h"
 #include "timer.h"
+#include "beatmap.h"
 
 HWND win = NULL;
 HINSTANCE inst;
@@ -33,7 +35,11 @@ double lastReportedPlayheadPosition;
 stopwatch_t previousFrameTime;
 double Length;          // 歌曲总长度
 
-#define CH(hObject) (hObject == NULL ? FALSE : CloseHandle(hObject))
+beatmap_t beatmap;
+BOOL isPlay;
+BOOL isNC;
+
+#define HCLOSE(hObject) (hObject == NULL ? FALSE : CloseHandle(hObject))
 
 /**
 * 在对话框中将消息发送到指定的控件
@@ -57,7 +63,7 @@ OPENFILENAME ofn;
 char path[MAX_PATH];
 
 // display error dialogs
-void Error(const char* es)
+void Error(const char *es)
 {
     char mes[200];
     sprintf(mes, "%s\n\n(error code: %d)", es, BASS_ErrorGetCode());
@@ -85,7 +91,7 @@ float GetNewBPM(float bpm)
 }
 
 // get bpm value after period of time (called by BASS_FX_BPM_CallbackSet function)
-void CALLBACK GetBPM_Callback(DWORD handle, float bpm, void* user)
+void CALLBACK GetBPM_Callback(DWORD handle, float bpm, void *user)
 {
     bpmValue = bpm;
     if (bpm) {
@@ -111,7 +117,7 @@ void CALLBACK beatTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, D
 }
 
 // get beat position in seconds (called by BASS_FX_BPM_BeatCallbackSet function)
-void CALLBACK GetBeatPos_Callback(DWORD handle, double beatpos, void* user)
+void CALLBACK GetBeatPos_Callback(DWORD handle, double beatpos, void *user)
 {
     double curpos;
     curpos = BASS_ChannelBytes2Seconds(handle, BASS_ChannelGetPosition(handle, BASS_POS_BYTE));
@@ -119,12 +125,12 @@ void CALLBACK GetBeatPos_Callback(DWORD handle, double beatpos, void* user)
 }
 
 // get bpm detection progress in percents (called by BASS_FX_BPM_DecodeGet function)
-void CALLBACK GetBPM_ProgressCallback(DWORD chan, float percent, void* user)
+void CALLBACK GetBPM_ProgressCallback(DWORD chan, float percent, void *user)
 {
     MESS(IDC_PRGRSBPM, PBM_SETPOS, (int)percent, 0);	// update the progress bar
 }
 
-void DecodingBPM(BOOL newStream, double startSec, double endSec, const char* fp)
+void DecodingBPM(BOOL newStream, double startSec, double endSec, const char *fp)
 {
     char c[30];
 
@@ -138,7 +144,7 @@ void DecodingBPM(BOOL newStream, double startSec, double endSec, const char* fp)
     if (bpmChan)
         // 使用 BASS_FX_BPM_BKGRND 后在调用 BASS_FX_BPM_Free 时会造成死锁，仅限 Windows 平台
         //bpmValue = BASS_FX_BPM_DecodeGet(bpmChan, startSec, endSec, 0, BASS_FX_BPM_BKGRND | BASS_FX_BPM_MULT2 | BASS_FX_FREESOURCE, (BPMPROGRESSPROC*)GetBPM_ProgressCallback, 0);
-        bpmValue = BASS_FX_BPM_DecodeGet(bpmChan, startSec, endSec, 0, BASS_FX_BPM_MULT2 | BASS_FX_FREESOURCE, (BPMPROGRESSPROC*)GetBPM_ProgressCallback, 0);
+        bpmValue = BASS_FX_BPM_DecodeGet(bpmChan, startSec, endSec, 0, BASS_FX_BPM_MULT2 | BASS_FX_FREESOURCE, (BPMPROGRESSPROC *)GetBPM_ProgressCallback, 0);
 
     // update the bpm view
     if (bpmValue) {
@@ -148,7 +154,7 @@ void DecodingBPM(BOOL newStream, double startSec, double endSec, const char* fp)
 }
 
 // get the file name from the file path
-char* GetFileName(const char* fp)
+char *GetFileName(const char *fp)
 {
     unsigned char slash_location;
     fp = strrev(fp);
@@ -156,13 +162,14 @@ char* GetFileName(const char* fp)
     return (strrev(fp) + strlen(fp) - slash_location);
 }
 
-void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void* user)
+void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void *user)
 {
     MsgWaitForSingleObject(ghMutex, INFINITE);
 
     songTime = 0;
     lastReportedPlayheadPosition = 0;
     Stopwatch_Reset(&previousFrameTime);
+    isPlay = FALSE;
 
     ReleaseMutex(ghMutex);
 }
@@ -189,8 +196,11 @@ void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void* user)
 */
 void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
 {
-    if (songTime == 0)
+    if (!isPlay && songTime >= 0)
+    {
         BASS_ChannelPlay(chan, FALSE);
+        isPlay = TRUE;
+    }
 
     // 更新进度条
     if ((int)(songTime * 1000) % 1000 == 0)
@@ -240,8 +250,8 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
         case ID_OPEN:
         {
             char file[MAX_PATH] = "";
-            ofn.lpstrFilter = "playable files\0*.mo3;*.xm;*.mod;*.s3m;*.it;*.mtm;*.mp3;*.mp2;*.mp1;*.ogg;*.wav;*.aif\0All files\0*.*\0\0";
-            //ofn.lpstrFilter = "beatmaps (*.osu)\0*.osu";
+            //ofn.lpstrFilter = "playable files\0*.mo3;*.xm;*.mod;*.s3m;*.it;*.mtm;*.mp3;*.mp2;*.mp1;*.ogg;*.wav;*.aif\0All files\0*.*\0\0";
+            ofn.lpstrFilter = "beatmaps (*.osu)\0*.osu";
             ofn.lpstrFile = file;
             if (GetOpenFileName(&ofn)) {
                 memcpy(path, file, ofn.nFileOffset);
@@ -249,6 +259,12 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
 
                 TIMER_timeKillEvent(pt);
                 endSyncProc(0, 0, 0, 0);
+
+                loadBeatmap(&beatmap, file);
+                file[ofn.nFileOffset] = 0;
+                strcat(file, beatmap.AudioFilename);
+                songTime = -beatmap.AudioLeadIn / 1000;
+                isNC = TRUE;
 
                 // update the button to show the loaded file name (without path)
                 MESS(ID_OPEN, WM_SETTEXT, 0, GetFileName(file));
@@ -332,7 +348,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                 GetDlgItemText(win, IDC_EPBPM, c, 5);
 
                 // 在播放时（BASS_ChannelPlay）检测BPM，变速会造成误差，请使用 BASS_FX_BPM_DecodeGet
-                BASS_FX_BPM_CallbackSet(chan, (BPMPROC*)GetBPM_Callback, (double)atof(c), 0, BASS_FX_BPM_MULT2, 0);
+                BASS_FX_BPM_CallbackSet(chan, (BPMPROC *)GetBPM_Callback, (double)atof(c), 0, BASS_FX_BPM_MULT2, 0);
             }
             else
                 BASS_FX_BPM_Free(chan);
@@ -340,7 +356,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
 
         case IDC_CHKBEAT:
             if (MESS(IDC_CHKBEAT, BM_GETCHECK, 0, 0)) {
-                BASS_FX_BPM_BeatCallbackSet(chan, (BPMBEATPROC*)GetBeatPos_Callback, 0);
+                BASS_FX_BPM_BeatCallbackSet(chan, (BPMBEATPROC *)GetBeatPos_Callback, 0);
             }
             else
                 BASS_FX_BPM_BeatFree(chan);
@@ -502,9 +518,9 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // 它的作用是从一个对话框资源中创建一个模态对话框。
     // 该函数直到指定的回调函数通过调用EndDialog函数中止模态的对话框才能返回控制。
-    DialogBox(inst, (char*)1000, 0, &dialogproc);
+    DialogBox(inst, (char *)1000, 0, &dialogproc);
 
-    CH(ghMutex);
+    HCLOSE(ghMutex);
 
     BASS_Free();
 
