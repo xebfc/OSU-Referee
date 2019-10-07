@@ -7,7 +7,10 @@
 #define NSIZE_MAX 32767 // win32 GetPrivateProfileSection lpReturnedString 允许的最大字符数
 #define INT_STR_LMAX 11 // int32 最大位数（int string length max）含符号位
 #define OSU_COLUMN_MAX UCHAR_MAX
-#define OSU_TIMING_MAX UCHAR_MAX
+#define OSU_TIMING_MAX NSIZE_MAX
+
+// beatmap,timing 均为指针
+#define getTimingIndex(beatmap, timing) (timing - &beatmap->TimingPoints[0]) / sizeof(timing_t)
 
 typedef struct
 {
@@ -45,6 +48,17 @@ typedef struct
 
 } beatmap_t;
 
+/**
+* 获取当前位置所处的Timing，数字2表示该函数为两个参数的版本。
+*
+* @param beatmap_t* beatmap指针
+* @param pos 当前播放位置，单位：毫秒
+* @return pos所处的Timing，为NULL时表示当前位置不在红线内
+*/
+timing_t *getTimingFromPosition2(beatmap_t *p, int pos);
+timing_t *getTimingFromPosition(beatmap_t *p, timing_t *prev, int pos);
+timing_t *getNextTiming(beatmap_t *p, timing_t *prev);
+timing_t *getFirstTiming(beatmap_t *p);
 void loadBeatmap(beatmap_t *p, char *file);
 
 int getLineFromSection(int index, char *returnedString, char *section);

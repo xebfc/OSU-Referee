@@ -4,6 +4,75 @@
 
 #include "beatmap.h"
 
+timing_t *getTimingFromPosition2(beatmap_t *p, int pos)
+{
+    int i = OSU_TIMING_MAX;
+    while (--i >= 0)
+    {
+        timing_t *t = &p->TimingPoints[i];
+        if (t->Inherited && t->Offset <= pos)
+            return t;
+    }
+    return NULL;
+}
+
+timing_t *getTimingFromPosition(beatmap_t *p, timing_t *prev, int pos)
+{
+    if (prev == NULL)
+        return getTimingFromPosition2(p, pos);
+
+    int i = getTimingIndex(p, prev);
+    timing_t *t;
+
+    if (prev->Offset > pos)
+    {
+        while (--i >= 0)
+        {
+            t = &p->TimingPoints[i];
+            if (t->Inherited && t->Offset <= pos)
+                return t;
+        }
+        t = NULL; // 红线不存在
+    }
+    else // prev->Offset <= pos
+    {
+        t = getNextTiming(p, prev);
+        if (t == NULL)
+        {
+            if (prev->Inherited)
+                return prev; // prev 是红线
+
+            // 当 prev 是绿线时
+            while (--i >= 0 && !p->TimingPoints[i].Inherited);
+            t = i < 0 ? NULL : &p->TimingPoints[i];
+        }
+    }
+
+    return t;
+}
+
+timing_t *getNextTiming(beatmap_t *p, timing_t *prev)
+{
+    if (prev == NULL)
+        return getFirstTiming(p);
+
+    int i = getTimingIndex(p, prev);
+    while (++i < OSU_TIMING_MAX)
+    {
+        timing_t *t = &p->TimingPoints[i];
+        if (t->Inherited)
+            return t;
+    }
+    return NULL;
+}
+
+timing_t *getFirstTiming(beatmap_t *p)
+{
+    int i = 0;
+    while (i < OSU_TIMING_MAX && !p->TimingPoints[i++].Inherited);
+    return i < OSU_TIMING_MAX ? &p->TimingPoints[i] : NULL;
+}
+
 void loadBeatmap(beatmap_t *p, char *file)
 {
     char *s = (char *)malloc(sizeof(char) * NSIZE_MAX)
@@ -18,16 +87,16 @@ void loadBeatmap(beatmap_t *p, char *file)
     int index = -1;
     while (getLineFromSection(++index, l, s) != -1)
     {
-        timing_t timing = p->TimingPoints[index];
-        timing.Offset = getIntFromLine(0, 0, l);
+        timing_t *timing = &p->TimingPoints[index];
+        timing->Offset = getIntFromLine(0, 0, l);
         getStringFromLine(1, NULL, c, l);
-        timing.MillisecondsPerBeat = atof(c);
-        timing.Meter = getIntFromLine(2, 0, l);
-        timing.SampleSet = getIntFromLine(3, 0, l);
-        timing.SampleIndex = getIntFromLine(4, 0, l);
-        timing.Volume = getIntFromLine(5, 0, l);
-        timing.Inherited = getIntFromLine(6, 0, l);
-        timing.KiaiMode = getIntFromLine(7, 0, l);
+        timing->MillisecondsPerBeat = atof(c);
+        timing->Meter = getIntFromLine(2, 0, l);
+        timing->SampleSet = getIntFromLine(3, 0, l);
+        timing->SampleIndex = getIntFromLine(4, 0, l);
+        timing->Volume = getIntFromLine(5, 0, l);
+        timing->Inherited = getIntFromLine(6, 0, l);
+        timing->KiaiMode = getIntFromLine(7, 0, l);
     }
 
     free(s);

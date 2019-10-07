@@ -38,6 +38,8 @@ double Length;          // 歌曲总长度
 beatmap_t beatmap;
 BOOL isPlay;
 BOOL isNC;
+timing_t *nowTiming;    // 当前红线位置
+int nextBeat;
 
 #define HCLOSE(hObject) (hObject == NULL ? FALSE : CloseHandle(hObject))
 
@@ -166,10 +168,12 @@ void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void *user)
 {
     MsgWaitForSingleObject(ghMutex, INFINITE);
 
-    songTime = 0;
+    //songTime = 0;
+    songTime = -beatmap.AudioLeadIn / 1000;
     lastReportedPlayheadPosition = 0;
     Stopwatch_Reset(&previousFrameTime);
     isPlay = FALSE;
+    nowTiming = getTimingFromPosition2(&beatmap, -beatmap.AudioLeadIn);
 
     ReleaseMutex(ghMutex);
 }
@@ -196,6 +200,45 @@ void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void *user)
 */
 void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
 {
+    MsgWaitForSingleObject(ghMutex, 0);
+
+    if (isNC)
+    {
+        double songTimeMillisecond = songTime * 1000;
+        nowTiming = getTimingFromPosition(&beatmap, nowTiming, songTimeMillisecond);
+        if (nowTiming == NULL)
+            goto next;
+
+        double interval = songTimeMillisecond - nowTiming->Offset;
+        if (interval >= 0)
+        {
+            // 3/4 四分音符为一拍，每小节有3拍。每拍用一条白线表示，每小节的开头就是一个长白线。
+            int beat = (int)(interval / nowTiming->MillisecondsPerBeat) + 1, // 已过节拍数 + 1
+                measure = beat % nowTiming->Meter; // 下一拍在小节中的位置，0为小节开头
+
+            double halfMillisecondsPerBeat = nowTiming->MillisecondsPerBeat / 2.0; // 每半拍持续时间
+
+            switch (nowTiming->Meter) {
+            case 4:
+            case 6:
+                if (interval >= nextBeat * nowTiming->MillisecondsPerBeat)
+                {
+                    nextBeat = beat;
+
+                }
+                break;
+
+            case 3:
+                break;
+            case 5:
+                break;
+            case 7:
+                break;
+            }
+        }
+    }
+
+next:
     if (!isPlay && songTime >= 0)
     {
         BASS_ChannelPlay(chan, FALSE);
@@ -210,12 +253,13 @@ void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, D
     //---------------------------------------------------------------------------
     // 虚拟时间轴，表示音频当前播放位置，精度为：毫秒
     // 算法来源于：https://www.reddit.com/r/gamedev/comments/13y26t/how_do_rhythm_games_stay_in_sync_with_the_music/
+    //
+    // 不支持debug，因为Stopwatch并没有像线程那样运行，所以不可以暂停和继续。它仅仅只是开始时间和停止时间的差值。
     //---------------------------------------------------------------------------
 
-    MsgWaitForSingleObject(ghMutex, 0);
-
     Stopwatch_Stop(&previousFrameTime);
-    songTime += previousFrameTime.ElapsedSeconds;
+    //songTime += previousFrameTime.ElapsedSeconds;
+    songTime += previousFrameTime.ElapsedSeconds * BASS_FX_TempoGetRateRatio(chan);
     Stopwatch_Start(&previousFrameTime);
 
     if (songTime >= 0)
@@ -257,14 +301,12 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                 memcpy(path, file, ofn.nFileOffset);
                 path[ofn.nFileOffset - 1] = 0;
 
-                TIMER_timeKillEvent(pt);
-                endSyncProc(0, 0, 0, 0);
-
                 loadBeatmap(&beatmap, file);
                 file[ofn.nFileOffset] = 0;
                 strcat(file, beatmap.AudioFilename);
-                songTime = -beatmap.AudioLeadIn / 1000;
-                isNC = TRUE;
+
+                TIMER_timeKillEvent(pt);
+                endSyncProc(0, 0, 0, 0);
 
                 // update the button to show the loaded file name (without path)
                 MESS(ID_OPEN, WM_SETTEXT, 0, GetFileName(file));
@@ -309,7 +351,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                 MESS(IDC_POS, TBM_SETPOS, TRUE, 0);
 
                 // create a new stream - decoded & resampled :)
-                if (!(chan = BASS_FX_TempoCreate(chan, BASS_SAMPLE_LOOP | BASS_FX_FREESOURCE))) {
+                if (!(chan = BASS_FX_TempoCreate(chan, /*BASS_SAMPLE_LOOP |*/ BASS_FX_FREESOURCE))) {
                     MESS(ID_OPEN, WM_SETTEXT, 0, "click here to open a file && play it...");
                     Error("Couldn't create a resampled stream!");
                     BASS_StreamFree(chan);
@@ -385,7 +427,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
     case WM_HSCROLL:
     {
         //if (!BASS_ChannelIsActive(chan)) break;
-        if (BASS_ChannelIsActive(chan) == BASS_ACTIVE_STOPPED) break;
+        //if (BASS_ChannelIsActive(chan) == BASS_ACTIVE_STOPPED) break;
 
         switch (CTRLID(l)) {
         case IDC_TEMPO:
@@ -400,6 +442,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
             // set new samplerate
             p = MESS(IDC_RATE, TBM_GETPOS, 0, 0);
             BASS_ChannelSetAttribute(chan, BASS_ATTRIB_TEMPO_FREQ, (float)p);
+            isNC = (int)p != info.freq;
 
             sprintf(c, "Samplerate = %dHz", p);
             MESS(IDC_SRATE, WM_SETTEXT, 0, c);
@@ -412,6 +455,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
             UpdatePositionLabel();
             break;
         case IDC_POS:
+            if (!BASS_ChannelIsActive(chan)) break;
             // change the position
             if (LOWORD(w) == SB_ENDSCROLL) { // seek to new pos
                 p = MESS(IDC_POS, TBM_GETPOS, 0, 0);
