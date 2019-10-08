@@ -13,12 +13,14 @@
   <ItemGroup>
     <ClInclude Include="bass.h" />
     <ClInclude Include="bass_fx.h" />
+    <ClInclude Include="beat.h" />
     <ClInclude Include="beatmap.h" />
     <ClInclude Include="bpm.h" />
     <ClInclude Include="stopwatch.h" />
     <ClInclude Include="timer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="beat.c" />
     <ClCompile Include="beatmap.c" />
     <ClCompile Include="bpm.c" />
     <ClCompile Include="stopwatch.c" />
