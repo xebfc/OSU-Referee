@@ -19,7 +19,9 @@ timing_t *getTimingFromPosition2(beatmap_t *p, int pos)
 timing_t *getTimingFromPosition(beatmap_t *p, timing_t *prev, int pos)
 {
     if (prev == NULL)
-        return getTimingFromPosition2(p, pos);
+        // 没必要使用getFirstTiming，循环查找的时间成本最大为O(n)，甚至还要再次处理NULL。
+        // 多数情况下TimingPoints[0]就是第一条红线，即便是绿线也可以（虽然不推荐）。
+        prev = &p->TimingPoints[0];
 
     int i = getTimingIndex(p, prev);
     timing_t *t;
@@ -37,15 +39,17 @@ timing_t *getTimingFromPosition(beatmap_t *p, timing_t *prev, int pos)
     else // prev->Offset <= pos
     {
         t = getNextTiming(p, prev);
-        if (t == NULL)
+        if (t == NULL || t->Offset > pos)
         {
             if (prev->Inherited)
-                return prev; // prev 是红线
+                return prev; // prev是红线
 
-            // 当 prev 是绿线时
+            // 当prev是绿线时
             while (--i >= 0 && !p->TimingPoints[i].Inherited);
-            t = i < 0 ? NULL : &p->TimingPoints[i];
+            return i < 0 ? NULL : &p->TimingPoints[i];
         }
+
+        t = getTimingFromPosition2(p, pos); // t的next不一定是边界
     }
 
     return t;
@@ -68,7 +72,7 @@ timing_t *getNextTiming(beatmap_t *p, timing_t *prev)
 
 timing_t *getFirstTiming(beatmap_t *p)
 {
-    int i = 0;
+    int i = 0; // TimingPoints[0]不一定是红线
     while (i < OSU_TIMING_MAX && !p->TimingPoints[i++].Inherited);
     return i < OSU_TIMING_MAX ? &p->TimingPoints[i] : NULL;
 }

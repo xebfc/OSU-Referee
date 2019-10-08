@@ -17,6 +17,7 @@
 #include "stopwatch.h"
 #include "timer.h"
 #include "beatmap.h"
+#include "beat.h"
 
 HWND win = NULL;
 HINSTANCE inst;
@@ -39,6 +40,7 @@ beatmap_t beatmap;
 BOOL isPlay;
 BOOL isNC;
 timing_t *nowTiming;    // 当前红线位置
+timing_t *nextTiming;   // 下条红线位置
 int nextBeat;
 
 #define HCLOSE(hObject) (hObject == NULL ? FALSE : CloseHandle(hObject))
@@ -174,6 +176,7 @@ void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void *user)
     Stopwatch_Reset(&previousFrameTime);
     isPlay = FALSE;
     nowTiming = getTimingFromPosition2(&beatmap, -beatmap.AudioLeadIn);
+    nextTiming = getNextTiming(&beatmap, nowTiming);
 
     ReleaseMutex(ghMutex);
 }
@@ -206,35 +209,39 @@ void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, D
     {
         double songTimeMillisecond = songTime * 1000;
         nowTiming = getTimingFromPosition(&beatmap, nowTiming, songTimeMillisecond);
+        nextTiming = getNextTiming(&beatmap, nowTiming);
         if (nowTiming == NULL)
-            goto next;
+            goto next; // 当前位置游离在红线外
 
-        double interval = songTimeMillisecond - nowTiming->Offset;
-        if (interval >= 0)
-        {
-            // 3/4 四分音符为一拍，每小节有3拍。每拍用一条白线表示，每小节的开头就是一个长白线。
-            int beat = (int)(interval / nowTiming->MillisecondsPerBeat) + 1, // 已过节拍数 + 1
-                measure = beat % nowTiming->Meter; // 下一拍在小节中的位置，0为小节开头
+        double halfMillisecondsPerBeat = nowTiming->MillisecondsPerBeat / 2.0, // 每半拍持续时间
+            interval = songTimeMillisecond - nowTiming->Offset; // 取值范围 [0, nextTiming.Offset - nowTiming.Offset)
+        // 3/4 四分音符为一拍，每小节有3拍。每拍用一条白线表示，每小节的开头就是一个长白线。
+        int beat = (int)(interval / halfMillisecondsPerBeat), // 已过半拍数
+            measure = beat % (nowTiming->Meter * 2), // 上一半拍在小节中的位置，0为小节开头
+            maxBeat = 0;
+        timing_t *nextTiming = getNextTiming(&beatmap, nowTiming);
+        if (nextTiming != NULL)
+            maxBeat = (double)(nextTiming->Offset - nowTiming->Offset) / halfMillisecondsPerBeat;
 
-            double halfMillisecondsPerBeat = nowTiming->MillisecondsPerBeat / 2.0; // 每半拍持续时间
+        switch (nowTiming->Meter) {
+        case 4:
+        case 6:
+            beat = (int)(interval / nowTiming->MillisecondsPerBeat); // 已过节拍数
+            measure = beat % nowTiming->Meter; // 上一拍在小节中的位置
 
-            switch (nowTiming->Meter) {
-            case 4:
-            case 6:
-                if (interval >= nextBeat * nowTiming->MillisecondsPerBeat)
-                {
-                    nextBeat = beat;
+            if (beat >= nextBeat)
+            {
+                nextBeat = beat;
 
-                }
-                break;
-
-            case 3:
-                break;
-            case 5:
-                break;
-            case 7:
-                break;
             }
+            break;
+
+        case 3:
+            break;
+        case 5:
+            break;
+        case 7:
+            break;
         }
     }
 
@@ -304,6 +311,11 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                 loadBeatmap(&beatmap, file);
                 file[ofn.nFileOffset] = 0;
                 strcat(file, beatmap.AudioFilename);
+                if (!getFirstTiming(&beatmap))
+                {
+                    Error(TEXT("红线不存在，无法加载NC节拍器。"));
+                    break;
+                }
 
                 TIMER_timeKillEvent(pt);
                 endSyncProc(0, 0, 0, 0);
@@ -455,11 +467,11 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
             UpdatePositionLabel();
             break;
         case IDC_POS:
-            if (!BASS_ChannelIsActive(chan)) break;
             // change the position
             if (LOWORD(w) == SB_ENDSCROLL) { // seek to new pos
                 p = MESS(IDC_POS, TBM_GETPOS, 0, 0);
                 BASS_ChannelSetPosition(chan, (QWORD)BASS_ChannelSeconds2Bytes(chan, (double)p), BASS_POS_BYTE);
+                songTime = (songTime + (double)p) / 2.0;
 
                 // get bpm value for IDC_EPBPM seconds from current position
                 GetDlgItemText(win, IDC_EPBPM, c, 5);
