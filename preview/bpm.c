@@ -40,8 +40,10 @@ beatmap_t beatmap;
 BOOL isPlay;
 BOOL isNC;
 timing_t *nowTiming;    // 当前红线位置
-timing_t *nextTiming;   // 下条红线位置
-int nextBeat;
+beat_t nextBeat;
+LPVOID bass_dry;
+LPVOID clap;
+float volume;
 
 #define HCLOSE(hObject) (hObject == NULL ? FALSE : CloseHandle(hObject))
 
@@ -176,7 +178,7 @@ void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void *user)
     Stopwatch_Reset(&previousFrameTime);
     isPlay = FALSE;
     nowTiming = getTimingFromPosition2(&beatmap, -beatmap.AudioLeadIn);
-    nextTiming = getNextTiming(&beatmap, nowTiming);
+    nextBeat = getNextBeatMillisecondByPosition(&beatmap, nowTiming, -beatmap.AudioLeadIn);
 
     ReleaseMutex(ghMutex);
 }
@@ -209,39 +211,28 @@ void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, D
     {
         double songTimeMillisecond = songTime * 1000;
         nowTiming = getTimingFromPosition(&beatmap, nowTiming, songTimeMillisecond);
-        nextTiming = getNextTiming(&beatmap, nowTiming);
         if (nowTiming == NULL)
-            goto next; // 当前位置游离在红线外
+            goto next; // songTime游离在红线外
 
-        double halfMillisecondsPerBeat = nowTiming->MillisecondsPerBeat / 2.0, // 每半拍持续时间
-            interval = songTimeMillisecond - nowTiming->Offset; // 取值范围 [0, nextTiming.Offset - nowTiming.Offset)
-        // 3/4 四分音符为一拍，每小节有3拍。每拍用一条白线表示，每小节的开头就是一个长白线。
-        int beat = (int)(interval / halfMillisecondsPerBeat), // 已过半拍数
-            measure = beat % (nowTiming->Meter * 2), // 上一半拍在小节中的位置，0为小节开头
-            maxBeat = 0;
-        timing_t *nextTiming = getNextTiming(&beatmap, nowTiming);
-        if (nextTiming != NULL)
-            maxBeat = (double)(nextTiming->Offset - nowTiming->Offset) / halfMillisecondsPerBeat;
-
-        switch (nowTiming->Meter) {
-        case 4:
-        case 6:
-            beat = (int)(interval / nowTiming->MillisecondsPerBeat); // 已过节拍数
-            measure = beat % nowTiming->Meter; // 上一拍在小节中的位置
-
-            if (beat >= nextBeat)
+        if (songTimeMillisecond >= nextBeat.time)
+        {
+            if (nextBeat.type != -1)
             {
-                nextBeat = beat;
-
+                if (nextBeat.type)
+                    sndPlaySound(clap, SND_ASYNC | SND_MEMORY | SND_NODEFAULT | SND_NOSTOP);
+                else
+                    sndPlaySound(bass_dry, SND_ASYNC | SND_MEMORY | SND_NODEFAULT | SND_NOSTOP);
             }
-            break;
 
-        case 3:
-            break;
-        case 5:
-            break;
-        case 7:
-            break;
+            nextBeat = getNextBeatMillisecondByPosition(&beatmap, nowTiming, songTimeMillisecond);
+        }
+
+        DWORD p = MESS(IDC_VOL, TBM_GETPOS, 0, 0);
+        float v = (float)(100 - p) / 100.0f * (nowTiming->Volume / 100.0f);
+        if (volume != v)
+        {
+            BASS_ChannelSetAttribute(chan, BASS_ATTRIB_VOL, v);
+            volume = v;
         }
     }
 
@@ -571,6 +562,12 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     Stopwatch_New(&previousFrameTime);
     ghMutex = CreateMutex(NULL, FALSE, NULL);
+
+    HRSRC wave1 = FindResource(NULL, MAKEINTRESOURCE(IDR_WAVE1), "WAVE"),
+        wave2 = FindResource(NULL, MAKEINTRESOURCE(IDR_WAVE2), "WAVE");
+    HGLOBAL h1 = LoadResource(NULL, wave1), h2 = LoadResource(NULL, wave2);
+    bass_dry = LockResource(h1);
+    clap = LockResource(h2);
 
     // 它的作用是从一个对话框资源中创建一个模态对话框。
     // 该函数直到指定的回调函数通过调用EndDialog函数中止模态的对话框才能返回控制。
