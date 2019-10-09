@@ -793,22 +793,24 @@
 #define VK_NUMPAD5                      0x65
 #define LANG_DIVEHI                     0x65
 #define IDC_POS                         101
-#define IDR_WAVE1                       101
 #define VK_NUMPAD6                      0x66
 #define IDC_TEMPO                       102
-#define IDR_WAVE2                       102
 #define VK_NUMPAD7                      0x67
 #define LANG_FULAH                      0x67
 #define LANG_PULAR                      0x67
 #define IDC_RATE                        103
+#define IDR_WAVE1                       103
 #define VK_NUMPAD8                      0x68
 #define LANG_HAUSA                      0x68
 #define IDC_STEMPO                      104
+#define IDR_WAVE2                       104
 #define VK_NUMPAD9                      0x69
 #define IDC_CHKPERIOD                   105
+#define IDR_WAVE3                       105
 #define VK_MULTIPLY                     0x6A
 #define LANG_YORUBA                     0x6a
 #define IDC_EPBPM                       106
+#define IDR_WAVE4                       106
 #define VK_ADD                          0x6B
 #define LANG_QUECHUA                    0x6b
 #define IDC_SPOS                        107
@@ -1614,17 +1616,14 @@
 #define SC_CONTEXTHELP                  0xF180
 #define LVS_TYPESTYLEMASK               0xfc00
 #define SPVERSION_MASK                  0x0000FF00
-#define HTERROR                         -2
-#define PWR_FAIL                        -1
 #define UNICODE_NOCHAR                  0xFFFF
-#define HTTRANSPARENT                   -1
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        103
+#define _APS_NEXT_RESOURCE_VALUE        107
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1000
 #define _APS_NEXT_SYMED_VALUE           101

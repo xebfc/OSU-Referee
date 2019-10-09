@@ -14,10 +14,12 @@
 #include "bass_fx.h"
 #include "bpm.h"
 
+#include <math.h>
 #include "stopwatch.h"
 #include "timer.h"
 #include "beatmap.h"
 #include "beat.h"
+#include "sound.h"
 
 HWND win = NULL;
 HINSTANCE inst;
@@ -41,9 +43,11 @@ BOOL isPlay;
 BOOL isNC;
 timing_t *nowTiming;    // 当前红线位置
 beat_t nextBeat;
-LPVOID bass_dry;
-LPVOID clap;
 float volume;
+HSAMPLE bass_dry;       // kick
+HANDLE clap;
+HANDLE finish;
+HANDLE hat;
 
 #define HCLOSE(hObject) (hObject == NULL ? FALSE : CloseHandle(hObject))
 
@@ -178,7 +182,7 @@ void CALLBACK endSyncProc(HSYNC handle, DWORD channel, DWORD data, void *user)
     Stopwatch_Reset(&previousFrameTime);
     isPlay = FALSE;
     nowTiming = getTimingFromPosition2(&beatmap, -beatmap.AudioLeadIn);
-    nextBeat = getNextBeatMillisecondByPosition(&beatmap, nowTiming, -beatmap.AudioLeadIn);
+    //nextBeat = getNextBeatMillisecondByPosition(&beatmap, nowTiming, -beatmap.AudioLeadIn);
 
     ReleaseMutex(ghMutex);
 }
@@ -214,19 +218,6 @@ void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, D
         if (nowTiming == NULL)
             goto next; // songTime游离在红线外
 
-        if (songTimeMillisecond >= nextBeat.time)
-        {
-            if (nextBeat.type != -1)
-            {
-                if (nextBeat.type)
-                    sndPlaySound(clap, SND_ASYNC | SND_MEMORY | SND_NODEFAULT | SND_NOSTOP);
-                else
-                    sndPlaySound(bass_dry, SND_ASYNC | SND_MEMORY | SND_NODEFAULT | SND_NOSTOP);
-            }
-
-            nextBeat = getNextBeatMillisecondByPosition(&beatmap, nowTiming, songTimeMillisecond);
-        }
-
         DWORD p = MESS(IDC_VOL, TBM_GETPOS, 0, 0);
         float v = (float)(100 - p) / 100.0f * (nowTiming->Volume / 100.0f);
         if (volume != v)
@@ -234,6 +225,42 @@ void CALLBACK playTimerProc(UINT uTimerID, UINT uMsg, DWORD dwUser, DWORD dw1, D
             BASS_ChannelSetAttribute(chan, BASS_ATTRIB_VOL, v);
             volume = v;
         }
+
+        int beat = (songTimeMillisecond - nowTiming->Offset) * 2 / nowTiming->MillisecondsPerBeat,
+            bar = beat % nowTiming->Meter;
+        if (bar == nextBeat.type)
+            goto next;
+        nextBeat.type = bar;
+
+        if (beat % (8 * nowTiming->Meter) == 0)
+        {
+            playSound(bass_dry, v);
+            if (!isEffectEnabled(nowTiming->KiaiMode, OmitFirstBarLine) || bar > 0)
+                playSound(finish, v);
+        }
+        else if (bar % 4 == 0)
+            playSound(bass_dry, v);
+        else if (bar % 4 == 2)
+            playSound(clap, v);
+        else if (fmod(beatmap.SliderTickRate, 2) == 0)
+            playSound(hat, v);
+
+        /*
+        if (songTimeMillisecond >= nextBeat.time)
+        {
+            if (nextBeat.type != -1)
+            {
+                float vol = nowTiming->Volume / 1000.0f;
+
+                if (nextBeat.type)
+                    playSound(clap, vol);
+                else
+                    playSound(bass_dry, vol);
+            }
+
+            nextBeat = getNextBeatMillisecondByPosition(&beatmap, nowTiming, songTimeMillisecond);
+        }
+        */
     }
 
 next:
@@ -299,6 +326,7 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
                 memcpy(path, file, ofn.nFileOffset);
                 path[ofn.nFileOffset - 1] = 0;
 
+                isNC = FALSE;
                 loadBeatmap(&beatmap, file);
                 file[ofn.nFileOffset] = 0;
                 strcat(file, beatmap.AudioFilename);
@@ -462,7 +490,11 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
             if (LOWORD(w) == SB_ENDSCROLL) { // seek to new pos
                 p = MESS(IDC_POS, TBM_GETPOS, 0, 0);
                 BASS_ChannelSetPosition(chan, (QWORD)BASS_ChannelSeconds2Bytes(chan, (double)p), BASS_POS_BYTE);
+
+                MsgWaitForSingleObject(ghMutex, 0);
                 songTime = (songTime + (double)p) / 2.0;
+                //nextBeat.type = -1;
+                ReleaseMutex(ghMutex);
 
                 // get bpm value for IDC_EPBPM seconds from current position
                 GetDlgItemText(win, IDC_EPBPM, c, 5);
@@ -501,6 +533,11 @@ BOOL CALLBACK dialogproc(HWND h, UINT m, WPARAM w, LPARAM l)
             DestroyWindow(h);
             return 1;
         }
+
+        bass_dry = newSoundFromResource(NULL, MAKEINTRESOURCE(IDR_WAVE4), "WAVE");
+        clap = newSoundFromResource(NULL, MAKEINTRESOURCE(IDR_WAVE1), "WAVE");
+        finish = newSoundFromResource(NULL, MAKEINTRESOURCE(IDR_WAVE2), "WAVE");
+        hat = newSoundFromResource(NULL, MAKEINTRESOURCE(IDR_WAVE3), "WAVE");
 
         // volume
         MESS(IDC_VOL, TBM_SETRANGEMAX, 0, 100);
@@ -563,17 +600,16 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     Stopwatch_New(&previousFrameTime);
     ghMutex = CreateMutex(NULL, FALSE, NULL);
 
-    HRSRC wave1 = FindResource(NULL, MAKEINTRESOURCE(IDR_WAVE1), "WAVE"),
-        wave2 = FindResource(NULL, MAKEINTRESOURCE(IDR_WAVE2), "WAVE");
-    HGLOBAL h1 = LoadResource(NULL, wave1), h2 = LoadResource(NULL, wave2);
-    bass_dry = LockResource(h1);
-    clap = LockResource(h2);
-
     // 它的作用是从一个对话框资源中创建一个模态对话框。
     // 该函数直到指定的回调函数通过调用EndDialog函数中止模态的对话框才能返回控制。
     DialogBox(inst, (char *)1000, 0, &dialogproc);
 
     HCLOSE(ghMutex);
+
+    freeSound(bass_dry);
+    freeSound(clap);
+    freeSound(finish);
+    freeSound(hat);
 
     BASS_Free();
 

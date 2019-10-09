@@ -79,9 +79,9 @@ timing_t *getFirstTiming(beatmap_t *p)
 
 void loadBeatmap(beatmap_t *p, char *file)
 {
-    char *s = (char *)malloc(sizeof(char) * NSIZE_MAX)
-        , l[OSU_COLUMN_MAX]
-        , c[OSU_COLUMN_MAX];
+    char *s = (char *)malloc(sizeof(char) * NSIZE_MAX) // section
+        , l[OSU_COLUMN_MAX]     // line
+        , c[OSU_COLUMN_MAX];    // column | cache
 
     GetPrivateProfileSection("General", s, NSIZE_MAX, file);
     getStringFromSection("AudioFilename", NULL, p->AudioFilename, s);
@@ -102,6 +102,10 @@ void loadBeatmap(beatmap_t *p, char *file)
         timing->Inherited = getIntFromLine(6, 0, l);
         timing->KiaiMode = getIntFromLine(7, 0, l);
     }
+
+    GetPrivateProfileSection("Difficulty", s, NSIZE_MAX, file);
+    getStringFromSection("SliderTickRate", NULL, c, s);
+    p->SliderTickRate = atof(c);
 
     free(s);
 }

@@ -1,5 +1,7 @@
 // Microsoft Visual C++ generated resource script.
 //
+#pragma code_page(65001)
+
 #include "bpm.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
@@ -12,11 +14,10 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// 中文(简体，中国) resources
+// 涓枃(绠�浣擄紝涓浗) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
-#pragma code_page(936)
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -73,16 +74,6 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 //
-// WAVE
-//
-
-IDR_WAVE1               WAVE                    "bass-dry.wav"
-
-IDR_WAVE2               WAVE                    "clap1.wav"
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
 // DESIGNINFO
 //
 
@@ -106,7 +97,21 @@ BEGIN
     0
 END
 
-#endif    // 中文(简体，中国) resources
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// WAVE
+//
+
+IDR_WAVE1               WAVE                    "nightcore-clap.wav"
+
+IDR_WAVE2               WAVE                    "nightcore-finish.wav"
+
+IDR_WAVE3               WAVE                    "nightcore-hat.wav"
+
+IDR_WAVE4               WAVE                    "nightcore-kick.wav"
+
+#endif    // 涓枃(绠�浣擄紝涓浗) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

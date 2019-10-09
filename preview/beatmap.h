@@ -12,6 +12,15 @@
 // beatmap,timing 均为指针
 #define getTimingIndex(beatmap, timing) (timing - &beatmap->TimingPoints[0]) / sizeof(timing_t)
 
+#define isEffectEnabled(k, e) ((k & e) != 0)
+
+typedef enum
+{
+    Effect_None = 0,
+    Effect_Kiai = 1,
+    OmitFirstBarLine = 8,
+} Effect;
+
 typedef struct
 {
     int Offset;
@@ -21,7 +30,7 @@ typedef struct
     int SampleIndex;
     int Volume;
     BOOL Inherited;
-    BOOL KiaiMode;
+    int KiaiMode;
 } timing_t;
 
 typedef struct
@@ -42,6 +51,9 @@ typedef struct
     BOOL WidescreenStoryboard; // (Boolean) 指定storyboard是否应为宽屏。
     BOOL SpecialStyle; // (Boolean) 是否使用osu!mania的N+1特殊样式。
     BOOL UseSkinSprites; // (Boolean) 指定storyboard是否可以使用用户的皮肤资源。
+
+    // Difficulty
+    double SliderTickRate;
 
     // TimingPoints
     timing_t TimingPoints[OSU_TIMING_MAX];

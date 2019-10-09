@@ -36,6 +36,9 @@
     <ClInclude Include="beat.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="sound.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="bpm.c">
@@ -53,6 +56,9 @@
     <ClCompile Include="beat.c">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="sound.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="bpm.rc">
@@ -60,10 +66,16 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Media Include="bass-dry.wav">
+    <Media Include="nightcore-clap.wav">
       <Filter>资源文件</Filter>
     </Media>
-    <Media Include="clap1.wav">
+    <Media Include="nightcore-finish.wav">
+      <Filter>资源文件</Filter>
+    </Media>
+    <Media Include="nightcore-hat.wav">
+      <Filter>资源文件</Filter>
+    </Media>
+    <Media Include="nightcore-kick.wav">
       <Filter>资源文件</Filter>
     </Media>
   </ItemGroup>

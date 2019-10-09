@@ -16,6 +16,7 @@
     <ClInclude Include="beat.h" />
     <ClInclude Include="beatmap.h" />
     <ClInclude Include="bpm.h" />
+    <ClInclude Include="sound.h" />
     <ClInclude Include="stopwatch.h" />
     <ClInclude Include="timer.h" />
   </ItemGroup>
@@ -23,6 +24,7 @@
     <ClCompile Include="beat.c" />
     <ClCompile Include="beatmap.c" />
     <ClCompile Include="bpm.c" />
+    <ClCompile Include="sound.c" />
     <ClCompile Include="stopwatch.c" />
     <ClCompile Include="timer.c" />
   </ItemGroup>
@@ -30,8 +32,10 @@
     <ResourceCompile Include="bpm.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Media Include="bass-dry.wav" />
-    <Media Include="clap1.wav" />
+    <Media Include="nightcore-clap.wav" />
+    <Media Include="nightcore-finish.wav" />
+    <Media Include="nightcore-hat.wav" />
+    <Media Include="nightcore-kick.wav" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -85,9 +89,9 @@
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -116,9 +120,9 @@
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
