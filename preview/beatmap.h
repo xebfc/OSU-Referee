@@ -11,7 +11,6 @@
 
 // beatmap,timing ¾ùÎªÖ¸Õë
 #define getTimingIndex(beatmap, timing) (timing - &beatmap->TimingPoints[0]) / sizeof(timing_t)
-
 #define isEffectEnabled(k, e) ((k & e) != 0)
 
 typedef enum
