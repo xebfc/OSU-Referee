@@ -5,7 +5,7 @@
 #include <limits.h>
 
 #define NSIZE_MAX 32767 // win32 GetPrivateProfileSection lpReturnedString 允许的最大字符数
-#define INT_STR_LMAX 11 // int32 最大位数（int string length max）含符号位
+#define INT_STR_LMAX 21 // int64 最大位数（int string length max）含符号位
 #define OSU_COLUMN_MAX UCHAR_MAX
 #define OSU_TIMING_MAX NSIZE_MAX
 
